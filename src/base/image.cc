@@ -27,7 +27,7 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 //
-// Author: Johannes L. Schoenberger (jsch at inf.ethz.ch)
+// Author: Johannes L. Schoenberger (jsch-at-demuc-dot-de)
 
 #include "base/image.h"
 
@@ -148,7 +148,7 @@ Eigen::Matrix3d Image::RotationMatrix() const {
 }
 
 Eigen::Vector3d Image::ProjectionCenter() const {
-  return ProjectionCenterFromParameters(qvec_, tvec_);
+  return ProjectionCenterFromPose(qvec_, tvec_);
 }
 
 Eigen::Vector3d Image::ViewingDirection() const {

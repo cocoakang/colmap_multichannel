@@ -27,7 +27,11 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 //
-// Author: Johannes L. Schoenberger (jsch at inf.ethz.ch)
+// Author: Johannes L. Schoenberger (jsch-at-demuc-dot-de)
+
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
 
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
@@ -58,13 +62,17 @@ const bool kUseOpenGL = true;
 int RunGraphicalUserInterface(int argc, char** argv) {
   OptionManager options;
 
+  std::string import_path;
+
   if (argc > 1) {
+    options.AddDefaultOption("import_path", &import_path);
     options.AddAllOptions();
     options.Parse(argc, argv);
   }
 
 #if (QT_VERSION >= QT_VERSION_CHECK(5, 6, 0))
   QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
+  QApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
 #endif
 
   Q_INIT_RESOURCE(resources);
@@ -73,6 +81,10 @@ int RunGraphicalUserInterface(int argc, char** argv) {
 
   MainWindow main_window(options);
   main_window.show();
+
+  if (!import_path.empty()) {
+    main_window.ImportReconstruction(import_path);
+  }
 
   return app.exec();
 }
@@ -276,6 +288,36 @@ int RunPoissonMesher(int argc, char** argv) {
   return EXIT_SUCCESS;
 }
 
+int RunProjectGenerator(int argc, char** argv) {
+  std::string output_path;
+  std::string quality = "high";
+
+  OptionManager options;
+  options.AddRequiredOption("output_path", &output_path);
+  options.AddDefaultOption("quality", &quality, "{low, medium, high, extreme}");
+  options.Parse(argc, argv);
+
+  OptionManager output_options;
+  output_options.AddAllOptions();
+
+  StringToLower(&quality);
+  if (quality == "low") {
+    output_options.ModifyForLowQuality();
+  } else if (quality == "medium") {
+    output_options.ModifyForMediumQuality();
+  } else if (quality == "high") {
+    output_options.ModifyForHighQuality();
+  } else if (quality == "extreme") {
+    output_options.ModifyForExtremeQuality();
+  } else {
+    LOG(FATAL) << "Invalid quality provided";
+  }
+
+  output_options.Write(output_path);
+
+  return EXIT_SUCCESS;
+}
+
 int RunDelaunayMesher(int argc, char** argv) {
 #ifndef CGAL_ENABLED
   std::cerr << "ERROR: Delaunay meshing requires CGAL, which is not "
@@ -379,6 +421,24 @@ int RunExhaustiveMatcher(int argc, char** argv) {
   return EXIT_SUCCESS;
 }
 
+bool VerifyCameraParams(const std::string& camera_model,
+                        const std::string& params) {
+  if (!ExistsCameraModelWithName(camera_model)) {
+    std::cerr << "ERROR: Camera model does not exist" << std::endl;
+    return false;
+  }
+
+  const std::vector<double> camera_params = CSVToVector<double>(params);
+  const int camera_model_id = CameraModelNameToId(camera_model);
+
+  if (camera_params.size() > 0 &&
+      !CameraModelVerifyParams(camera_model_id, camera_params)) {
+    std::cerr << "ERROR: Invalid camera parameters" << std::endl;
+    return false;
+  }
+  return true;
+}
+
 int RunFeatureExtractor(int argc, char** argv) {
   std::string image_list_path;
 
@@ -404,14 +464,8 @@ int RunFeatureExtractor(int argc, char** argv) {
     std::cerr << "ERROR: Camera model does not exist" << std::endl;
   }
 
-  const std::vector<double> camera_params =
-      CSVToVector<double>(options.image_reader->camera_params);
-  const int camera_model_id =
-      CameraModelNameToId(options.image_reader->camera_model);
-
-  if (camera_params.size() > 0 &&
-      !CameraModelVerifyParams(camera_model_id, camera_params)) {
-    std::cerr << "ERROR: Invalid camera parameters" << std::endl;
+  if (!VerifyCameraParams(options.image_reader->camera_model,
+                          options.image_reader->camera_params)) {
     return EXIT_FAILURE;
   }
 
@@ -456,14 +510,8 @@ int RunFeatureImporter(int argc, char** argv) {
     }
   }
 
-  const std::vector<double> camera_params =
-      CSVToVector<double>(options.image_reader->camera_params);
-  const int camera_model_id =
-      CameraModelNameToId(options.image_reader->camera_model);
-
-  if (camera_params.size() > 0 &&
-      !CameraModelVerifyParams(camera_model_id, camera_params)) {
-    std::cerr << "ERROR: Invalid camera parameters" << std::endl;
+  if (!VerifyCameraParams(options.image_reader->camera_model,
+                          options.image_reader->camera_params)) {
     return EXIT_FAILURE;
   }
 
@@ -503,6 +551,84 @@ std::vector<std::pair<image_t, image_t>> ReadStereoImagePairs(
   }
 
   return stereo_pairs;
+}
+
+int RunImageDeleter(int argc, char** argv) {
+  std::string input_path;
+  std::string output_path;
+  std::string image_ids_path;
+  std::string image_names_path;
+
+  OptionManager options;
+  options.AddRequiredOption("input_path", &input_path);
+  options.AddRequiredOption("output_path", &output_path);
+  options.AddDefaultOption(
+      "image_ids_path", &image_ids_path,
+      "Path to text file containing one image_id to delete per line");
+  options.AddDefaultOption(
+      "image_names_path", &image_names_path,
+      "Path to text file containing one image name to delete per line");
+  options.Parse(argc, argv);
+
+  Reconstruction reconstruction;
+  reconstruction.Read(input_path);
+
+  if (!image_ids_path.empty()) {
+    const auto image_ids = ReadTextFileLines(image_ids_path);
+
+    for (const auto image_id_str : image_ids) {
+      if (image_id_str.empty()) {
+        continue;
+      }
+
+      const image_t image_id = std::stoi(image_id_str);
+      if (reconstruction.ExistsImage(image_id)) {
+        const auto& image = reconstruction.Image(image_id);
+        std::cout
+            << StringPrintf(
+                   "Deleting image_id=%d, image_name=%s from reconstruction",
+                   image.ImageId(), image.Name().c_str())
+            << std::endl;
+        reconstruction.DeRegisterImage(image_id);
+      } else {
+        std::cout << StringPrintf(
+                         "WARNING: Skipping image_id=%s, because it does not "
+                         "exist in the reconstruction",
+                         image_id_str.c_str())
+                  << std::endl;
+      }
+    }
+  }
+
+  if (!image_names_path.empty()) {
+    const auto image_names = ReadTextFileLines(image_names_path);
+
+    for (const auto image_name : image_names) {
+      if (image_name.empty()) {
+        continue;
+      }
+
+      const Image* image = reconstruction.FindImageWithName(image_name);
+      if (image != nullptr) {
+        std::cout
+            << StringPrintf(
+                   "Deleting image_id=%d, image_name=%s from reconstruction",
+                   image->ImageId(), image->Name().c_str())
+            << std::endl;
+        reconstruction.DeRegisterImage(image->ImageId());
+      } else {
+        std::cout << StringPrintf(
+                         "WARNING: Skipping image_name=%s, because it does not "
+                         "exist in the reconstruction",
+                         image_name.c_str())
+                  << std::endl;
+      }
+    }
+  }
+
+  reconstruction.Write(output_path);
+
+  return EXIT_SUCCESS;
 }
 
 int RunImageRectifier(int argc, char** argv) {
@@ -976,7 +1102,7 @@ int RunModelMerger(int argc, char** argv) {
   std::string input_path1;
   std::string input_path2;
   std::string output_path;
-  double max_reproj_error = 8.0;
+  double max_reproj_error = 64.0;
 
   OptionManager options;
   options.AddRequiredOption("input_path1", &input_path1);
@@ -1105,6 +1231,43 @@ int RunSequentialMatcher(int argc, char** argv) {
     feature_matcher.Start();
     feature_matcher.Wait();
   }
+
+  return EXIT_SUCCESS;
+}
+
+int RunPointFiltering(int argc, char** argv) {
+  std::string input_path;
+  std::string output_path;
+
+  size_t min_track_len = 2;
+  double max_reproj_error = 4.0;
+  double min_tri_angle = 1.5;
+
+  OptionManager options;
+  options.AddRequiredOption("input_path", &input_path);
+  options.AddRequiredOption("output_path", &output_path);
+  options.AddDefaultOption("min_track_len", &min_track_len);
+  options.AddDefaultOption("max_reproj_error", &max_reproj_error);
+  options.AddDefaultOption("min_tri_angle", &min_tri_angle);
+  options.Parse(argc, argv);
+
+  Reconstruction reconstruction;
+  reconstruction.Read(input_path);
+
+  size_t num_filtered =
+      reconstruction.FilterAllPoints3D(max_reproj_error, min_tri_angle);
+
+  for (const auto point3D_id : reconstruction.Point3DIds()) {
+    const auto& point3D = reconstruction.Point3D(point3D_id);
+    if (point3D.Track().Length() < min_track_len) {
+      num_filtered += point3D.Track().Length();
+      reconstruction.DeletePoint3D(point3D_id);
+    }
+  }
+
+  std::cout << "Filtered observations: " << num_filtered << std::endl;
+
+  reconstruction.Write(output_path);
 
   return EXIT_SUCCESS;
 }
@@ -1567,6 +1730,7 @@ std::vector<Image> ReadVocabTreeRetrievalImageList(const std::string& path,
     }
   } else {
     DatabaseTransaction database_transaction(database);
+
     const auto image_names = ReadTextFileLines(path);
     images.reserve(image_names.size());
     for (const auto& image_name : image_names) {
@@ -1742,6 +1906,7 @@ int ShowHelp(
 }
 
 int main(int argc, char** argv) {
+  std::cout <<"Good evening, Mr Kang!"<<std::endl;
   InitializeGlog(argv);
 
   std::vector<std::pair<std::string, command_func_t>> commands;
@@ -1755,6 +1920,7 @@ int main(int argc, char** argv) {
   commands.emplace_back("feature_extractor", &RunFeatureExtractor);
   commands.emplace_back("feature_importer", &RunFeatureImporter);
   commands.emplace_back("hierarchical_mapper", &RunHierarchicalMapper);
+  commands.emplace_back("image_deleter", &RunImageDeleter);
   commands.emplace_back("image_rectifier", &RunImageRectifier);
   commands.emplace_back("image_registrator", &RunImageRegistrator);
   commands.emplace_back("image_undistorter", &RunImageUndistorter);
@@ -1767,8 +1933,10 @@ int main(int argc, char** argv) {
   commands.emplace_back("model_orientation_aligner",
                         &RunModelOrientationAligner);
   commands.emplace_back("patch_match_stereo", &RunPatchMatchStereo);
+  commands.emplace_back("point_filtering", &RunPointFiltering);
   commands.emplace_back("point_triangulator", &RunPointTriangulator);
   commands.emplace_back("poisson_mesher", &RunPoissonMesher);
+  commands.emplace_back("project_generator", &RunProjectGenerator);
   commands.emplace_back("rig_bundle_adjuster", &RunRigBundleAdjuster);
   commands.emplace_back("sequential_matcher", &RunSequentialMatcher);
   commands.emplace_back("spatial_matcher", &RunSpatialMatcher);

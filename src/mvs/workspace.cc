@@ -27,7 +27,7 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 //
-// Author: Johannes L. Schoenberger (jsch at inf.ethz.ch)
+// Author: Johannes L. Schoenberger (jsch-at-demuc-dot-de)
 
 #include "mvs/workspace.h"
 
@@ -161,6 +161,7 @@ std::string Workspace::GetFileName(const int image_idx) const {
 
 void ImportPMVSWorkspace(const Workspace& workspace,
                          const std::string& option_name) {
+
   const std::string& workspace_path = workspace.GetOptions().workspace_path;
   const std::string& stereo_folder = workspace.GetOptions().stereo_folder;
 

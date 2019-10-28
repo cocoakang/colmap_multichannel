@@ -27,7 +27,7 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 //
-// Author: Johannes L. Schoenberger (jsch at inf.ethz.ch)
+// Author: Johannes L. Schoenberger (jsch-at-demuc-dot-de)
 
 #include "base/reconstruction.h"
 
@@ -383,12 +383,13 @@ void Reconstruction::Normalize(const double extent, const double p0,
   const Eigen::Vector3d translation = mean_coord;
 
   // Transform images.
-  for (auto& elem : proj_centers) {
-    elem.second -= translation;
-    elem.second *= scale;
-    const Eigen::Quaterniond quat(elem.first->Qvec(0), elem.first->Qvec(1),
-                                  elem.first->Qvec(2), elem.first->Qvec(3));
-    elem.first->SetTvec(quat * -elem.second);
+  for (auto& image_proj_center : proj_centers) {
+    image_proj_center.second -= translation;
+    image_proj_center.second *= scale;
+    const Eigen::Quaterniond quat(
+        image_proj_center.first->Qvec(0), image_proj_center.first->Qvec(1),
+        image_proj_center.first->Qvec(2), image_proj_center.first->Qvec(3));
+    image_proj_center.first->SetTvec(quat * -image_proj_center.second);
   }
 
   // Transform points.
@@ -491,6 +492,8 @@ bool Reconstruction::Merge(const Reconstruction& reconstruction,
       }
     }
   }
+
+  FilterPoints3DWithLargeReprojectionError(max_reproj_error, Point3DIds());
 
   return true;
 }
@@ -1275,11 +1278,10 @@ size_t Reconstruction::FilterPoints3DWithSmallTriangulationAngle(
 size_t Reconstruction::FilterPoints3DWithLargeReprojectionError(
     const double max_reproj_error,
     const std::unordered_set<point3D_t>& point3D_ids) {
+  const double max_squared_reproj_error = max_reproj_error * max_reproj_error;
+
   // Number of filtered points.
   size_t num_filtered = 0;
-
-  // Cache for projection matrices.
-  EIGEN_STL_UMAP(image_t, Eigen::Matrix3x4d) proj_matrices;
 
   for (const auto point3D_id : point3D_ids) {
     if (!ExistsPoint3D(point3D_id)) {
@@ -1290,6 +1292,7 @@ size_t Reconstruction::FilterPoints3DWithLargeReprojectionError(
 
     if (point3D.Track().Length() < 2) {
       DeletePoint3D(point3D_id);
+      num_filtered += point3D.Track().Length();
       continue;
     }
 
@@ -1299,32 +1302,18 @@ size_t Reconstruction::FilterPoints3DWithLargeReprojectionError(
 
     for (const auto& track_el : point3D.Track().Elements()) {
       const class Image& image = Image(track_el.image_id);
-
-      Eigen::Matrix3x4d proj_matrix;
-      if (proj_matrices.count(track_el.image_id) == 0) {
-        proj_matrix = image.ProjectionMatrix();
-        proj_matrices[track_el.image_id] = proj_matrix;
-      } else {
-        proj_matrix = proj_matrices[track_el.image_id];
-      }
-
-      if (HasPointPositiveDepth(proj_matrix, point3D.XYZ())) {
-        const class Camera& camera = Camera(image.CameraId());
-        const Point2D& point2D = image.Point2D(track_el.point2D_idx);
-        const double reproj_error = CalculateReprojectionError(
-            point2D.XY(), point3D.XYZ(), proj_matrix, camera);
-        if (reproj_error > max_reproj_error) {
-          track_els_to_delete.push_back(track_el);
-        } else {
-          reproj_error_sum += reproj_error;
-        }
-      } else {
+      const class Camera& camera = Camera(image.CameraId());
+      const Point2D& point2D = image.Point2D(track_el.point2D_idx);
+      const double squared_reproj_error = CalculateSquaredReprojectionError(
+          point2D.XY(), point3D.XYZ(), image.Qvec(), image.Tvec(), camera);
+      if (squared_reproj_error > max_squared_reproj_error) {
         track_els_to_delete.push_back(track_el);
+      } else {
+        reproj_error_sum += std::sqrt(squared_reproj_error);
       }
     }
 
-    if (track_els_to_delete.size() == point3D.Track().Length() ||
-        track_els_to_delete.size() == point3D.Track().Length() - 1) {
+    if (track_els_to_delete.size() >= point3D.Track().Length() - 1) {
       num_filtered += point3D.Track().Length();
       DeletePoint3D(point3D_id);
     } else {
@@ -1906,7 +1895,8 @@ void Reconstruction::SetObservationAsTriangulated(
           Database::ImagePairToPairId(image_id, corr.image_id);
       image_pairs_[pair_id].first += 1;
       CHECK_LE(image_pairs_[pair_id].first, image_pairs_[pair_id].second)
-          << "The correspondence graph graph must not contain duplicate matches";
+          << "The correspondence graph graph must not contain duplicate "
+             "matches";
     }
   }
 }

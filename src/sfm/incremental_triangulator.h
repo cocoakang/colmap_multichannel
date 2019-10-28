@@ -27,7 +27,7 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 //
-// Author: Johannes L. Schoenberger (jsch at inf.ethz.ch)
+// Author: Johannes L. Schoenberger (jsch-at-demuc-dot-de)
 
 #ifndef COLMAP_SRC_SFM_INCREMENTAL_TRIANGULATOR_H_
 #define COLMAP_SRC_SFM_INCREMENTAL_TRIANGULATOR_H_
@@ -135,6 +135,9 @@ class IncrementalTriangulator {
   // inlier matches between the image pair.
   size_t Retriangulate(const Options& options);
 
+  // Indicate that a 3D point has been modified.
+  void AddModifiedPoint3D(const point3D_t point3D_id);
+
   // Get changed 3D points, since the last call to `ClearModifiedPoints3D`.
   const std::unordered_set<point3D_t>& GetModifiedPoints3D();
 
@@ -151,7 +154,6 @@ class IncrementalTriangulator {
     const Image* image;
     const Camera* camera;
     const Point2D* point2D;
-    Eigen::Matrix3x4d proj_matrix;
   };
 
  private:

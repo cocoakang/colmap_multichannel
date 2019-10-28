@@ -27,7 +27,7 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 //
-// Author: Johannes L. Schoenberger (jsch at inf.ethz.ch)
+// Author: Johannes L. Schoenberger (jsch-at-demuc-dot-de)
 
 #ifndef COLMAP_SRC_BASE_POSE_H_
 #define COLMAP_SRC_BASE_POSE_H_
@@ -135,10 +135,6 @@ Eigen::Matrix3d RotationFromUnitVectors(const Eigen::Vector3d& vec1,
 
 // Extract camera projection center from projection matrix, i.e. the projection
 // center in world coordinates `-R^T t`.
-//
-// @param                3x4 projection matrix.
-//
-// @return               3x1 camera projection center.
 Eigen::Vector3d ProjectionCenterFromMatrix(
     const Eigen::Matrix3x4d& proj_matrix);
 
@@ -148,8 +144,8 @@ Eigen::Vector3d ProjectionCenterFromMatrix(
 // @param tvec           3x1 translation vector.
 //
 // @return               3x1 camera projection center.
-Eigen::Vector3d ProjectionCenterFromParameters(const Eigen::Vector4d& qvec,
-                                               const Eigen::Vector3d& tvec);
+Eigen::Vector3d ProjectionCenterFromPose(const Eigen::Vector4d& qvec,
+                                         const Eigen::Vector3d& tvec);
 
 // Compute the relative transformation from pose 1 to 2.
 //

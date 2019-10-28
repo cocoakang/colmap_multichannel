@@ -200,13 +200,14 @@ def build_cmake_project(args, path, extra_config_args=[],
     if return_code != 0:
         print("Command failed:", " ".join(cmake_command))
         sys.exit(1)
-
+    
     cmake_command = ["cmake",
                      "--build", ".",
                      "--target", "install",
                      "--config", args.build_type] \
                     + args.cmake_build_args \
                     + extra_build_args
+    print(cmake_command)
     return_code = subprocess.call(cmake_command, cwd=path)
     if return_code != 0:
         print("Command failed:", " ".join(cmake_command))

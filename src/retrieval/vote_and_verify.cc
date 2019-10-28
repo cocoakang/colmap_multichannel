@@ -27,7 +27,7 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 //
-// Author: Johannes L. Schoenberger (jsch at inf.ethz.ch)
+// Author: Johannes L. Schoenberger (jsch-at-demuc-dot-de)
 
 #include "retrieval/vote_and_verify.h"
 
@@ -388,7 +388,7 @@ int VoteAndVerify(const VoteAndVerifyOptions& options,
     local_tform.A21 = inv_A.leftCols<2>().cast<float>();
     local_tform.t21 = inv_A.rightCols<1>().cast<float>();
 
-    ComputeInliers(tform, matches, options.max_transfer_error,
+    ComputeInliers(local_tform, matches, options.max_transfer_error,
                    options.max_scale_error, &inlier_idxs);
 
     if (inlier_idxs.size() > best_num_inliers) {

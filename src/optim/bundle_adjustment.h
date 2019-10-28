@@ -27,7 +27,7 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 //
-// Author: Johannes L. Schoenberger (jsch at inf.ethz.ch)
+// Author: Johannes L. Schoenberger (jsch-at-demuc-dot-de)
 
 #ifndef COLMAP_SRC_OPTIM_BUNDLE_ADJUSTMENT_H_
 #define COLMAP_SRC_OPTIM_BUNDLE_ADJUSTMENT_H_
@@ -48,7 +48,7 @@ namespace colmap {
 
 struct BundleAdjustmentOptions {
   // Loss function types: Trivial (non-robust) and Cauchy (robust) loss.
-  enum class LossFunctionType { TRIVIAL, CAUCHY };
+  enum class LossFunctionType { TRIVIAL, SOFT_L1, CAUCHY };
   LossFunctionType loss_function_type = LossFunctionType::TRIVIAL;
 
   // Scaling factor determines residual at which robustification takes place.
@@ -62,6 +62,9 @@ struct BundleAdjustmentOptions {
 
   // Whether to refine the extra parameter group.
   bool refine_extra_params = true;
+
+  // Whether to refine the extrinsic parameter group.
+  bool refine_extrinsics = true;
 
   // Whether to print a final summary.
   bool print_summary = true;

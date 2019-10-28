@@ -27,7 +27,7 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 //
-// Author: Johannes L. Schoenberger (jsch at inf.ethz.ch)
+// Author: Johannes L. Schoenberger (jsch-at-demuc-dot-de)
 
 #ifndef COLMAP_SRC_UTIL_BITMAP_H_
 #define COLMAP_SRC_UTIL_BITMAP_H_
@@ -49,6 +49,8 @@
 #include "util/string.h"
 
 namespace colmap {
+
+enum ImageType { GREY, RGB, MULTI };
 
 // Templated bitmap color class.
 template <typename T>
@@ -123,6 +125,7 @@ class Bitmap {
   // Copy raw image data to array.
   std::vector<uint8_t> ConvertToRawBits() const;
   std::vector<uint8_t> ConvertToRowMajorArray() const;
+  std::vector<uint8_t> ConvertToDepthRowMajorArray() const;
   std::vector<uint8_t> ConvertToColMajorArray() const;
 
   // Manipulate individual pixels. For grayscale images, only the red element

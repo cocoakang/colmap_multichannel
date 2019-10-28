@@ -125,7 +125,7 @@ void PatchMatch::Check() const {
     const Image& image = problem_.images->at(image_idx);
     CHECK_GT(image.GetBitmap().Width(), 0) << image_idx;
     CHECK_GT(image.GetBitmap().Height(), 0) << image_idx;
-    //CHECK(image.GetBitmap().IsGrey()) << image_idx; //CHANGED
+    CHECK(image.GetBitmap().IsGrey()) << image_idx;
     CHECK_EQ(image.GetWidth(), image.GetBitmap().Width()) << image_idx;
     CHECK_EQ(image.GetHeight(), image.GetBitmap().Height()) << image_idx;
 
@@ -155,15 +155,7 @@ void PatchMatch::Check() const {
 
 void PatchMatch::Run() {
   PrintHeading2("PatchMatch::Run");
-  //TODO-x: delete
-  const Image& ref_image = problem_.images->at(problem_.ref_image_idx);
-  std::cout << "ref_image info: " << std::endl;
-  std::cout << ref_image.GetWidth() << ' ' << ref_image.GetHeight() << ' ' << ref_image.GetDepth() << std::endl;
-  //std::cout << problem_.ref_image_idx << std::endl;
-  std::cout << "model images channels: " << std::endl;
-  for (int i = 0; i < problem_.images->size(); ++i)
-	  std::cout << (*problem_.images)[i].GetDepth() << ' ' << (*problem_.images)[i].GetBitmap().IsRGB() << ' ' << (*problem_.images)[i].GetBitmap().Channels() << std::endl;
-  std::cout << std::endl;
+
   Check();
 
   patch_match_cuda_.reset(new PatchMatchCuda(options_, problem_));
@@ -245,15 +237,13 @@ void PatchMatchController::ReadWorkspace() {
   }
 
   workspace_options.max_image_size = options_.max_image_size;
-  workspace_options.image_as_rgb = true; //CHANGED //TODO-x: delete
-  workspace_options.image_type = RGB;
+  workspace_options.image_as_rgb = false;
   workspace_options.cache_size = options_.cache_size;
   workspace_options.workspace_path = workspace_path_;
   workspace_options.workspace_format = workspace_format_;
   workspace_options.input_type = options_.geom_consistency ? "photometric" : "";
 
   workspace_.reset(new Workspace(workspace_options));
- 
 
   if (workspace_format_lower_case == "pmvs") {
     std::cout << StringPrintf("Importing PMVS workspace (option %s)...",
@@ -261,7 +251,7 @@ void PatchMatchController::ReadWorkspace() {
               << std::endl;
     ImportPMVSWorkspace(*workspace_, pmvs_option_name_);
   }
- 
+
   depth_ranges_ = workspace_->GetModel().ComputeDepthRanges();
 }
 
@@ -465,9 +455,6 @@ void PatchMatchController::ProcessProblem(const PatchMatchOptions& options,
     patch_match_options.sigma_spatial = patch_match_options.window_radius;
   }
 
-
-  
-
   std::vector<Image> images = model.images;
   std::vector<DepthMap> depth_maps;
   std::vector<NormalMap> normal_maps;
@@ -520,7 +507,6 @@ void PatchMatchController::ProcessProblem(const PatchMatchOptions& options,
   if (options.write_consistency_graph) {
     patch_match.GetConsistencyGraph().Write(consistency_graph_path);
   }
-  exit(0);
 }
 
 }  // namespace mvs

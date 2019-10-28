@@ -27,7 +27,7 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 //
-// Author: Johannes L. Schoenberger (jsch at inf.ethz.ch)
+// Author: Johannes L. Schoenberger (jsch-at-demuc-dot-de)
 
 #include "sfm/incremental_triangulator.h"
 
@@ -83,7 +83,6 @@ size_t IncrementalTriangulator::TriangulateImage(const Options& options,
   ref_corr_data.image_id = image_id;
   ref_corr_data.image = &image;
   ref_corr_data.camera = &camera;
-  ref_corr_data.proj_matrix = image.ProjectionMatrix();
 
   // Container for correspondences from reference observation to other images.
   std::vector<CorrData> corrs_data;
@@ -152,7 +151,6 @@ size_t IncrementalTriangulator::CompleteImage(const Options& options,
   ref_corr_data.image_id = image_id;
   ref_corr_data.image = &image;
   ref_corr_data.camera = &camera;
-  ref_corr_data.proj_matrix = image.ProjectionMatrix();
 
   // Container for correspondences from reference observation to other images.
   std::vector<CorrData> corrs_data;
@@ -330,10 +328,6 @@ size_t IncrementalTriangulator::Retriangulate(const Options& options) {
     }
     num_re_trials += 1;
 
-    // Extract camera poses.
-    const Eigen::Matrix3x4d proj_matrix1 = image1.ProjectionMatrix();
-    const Eigen::Matrix3x4d proj_matrix2 = image2.ProjectionMatrix();
-
     const Camera& camera1 = reconstruction_->Camera(image1.CameraId());
     const Camera& camera2 = reconstruction_->Camera(image2.CameraId());
     if (HasCameraBogusParams(options, camera1) ||
@@ -366,7 +360,6 @@ size_t IncrementalTriangulator::Retriangulate(const Options& options) {
       corr_data1.image = &image1;
       corr_data1.camera = &camera1;
       corr_data1.point2D = &point2D1;
-      corr_data1.proj_matrix = proj_matrix1;
 
       CorrData corr_data2;
       corr_data2.image_id = image_id2;
@@ -374,7 +367,6 @@ size_t IncrementalTriangulator::Retriangulate(const Options& options) {
       corr_data2.image = &image2;
       corr_data2.camera = &camera2;
       corr_data2.point2D = &point2D2;
-      corr_data2.proj_matrix = proj_matrix2;
 
       if (point2D1.HasPoint3D() && !point2D2.HasPoint3D()) {
         const std::vector<CorrData> corrs_data1 = {corr_data1};
@@ -394,6 +386,10 @@ size_t IncrementalTriangulator::Retriangulate(const Options& options) {
   }
 
   return num_tris;
+}
+
+void IncrementalTriangulator::AddModifiedPoint3D(const point3D_t point3D_id) {
+  modified_point3D_ids_.insert(point3D_id);
 }
 
 const std::unordered_set<point3D_t>&
@@ -450,7 +446,6 @@ size_t IncrementalTriangulator::Find(const Options& options,
     corr_data.image = &corr_image;
     corr_data.camera = &corr_camera;
     corr_data.point2D = &corr_image.Point2D(corr.point2D_idx);
-    corr_data.proj_matrix = corr_image.ProjectionMatrix();
 
     corrs_data->push_back(corr_data);
 
@@ -566,13 +561,9 @@ size_t IncrementalTriangulator::Continue(
     const Point3D& point3D =
         reconstruction_->Point3D(corr_data.point2D->Point3DId());
 
-    if (!HasPointPositiveDepth(ref_corr_data.proj_matrix, point3D.XYZ())) {
-      continue;
-    }
-
-    const double angle_error =
-        CalculateAngularError(ref_corr_data.point2D->XY(), point3D.XYZ(),
-                              ref_corr_data.proj_matrix, *ref_corr_data.camera);
+    const double angle_error = CalculateAngularError(
+        ref_corr_data.point2D->XY(), point3D.XYZ(), ref_corr_data.image->Qvec(),
+        ref_corr_data.image->Tvec(), *ref_corr_data.camera);
     if (angle_error < best_angle_error) {
       best_angle_error = angle_error;
       best_idx = idx;
@@ -598,6 +589,9 @@ size_t IncrementalTriangulator::Merge(const Options& options,
   if (!reconstruction_->ExistsPoint3D(point3D_id)) {
     return 0;
   }
+
+  const double max_squared_reproj_error =
+      options.merge_max_reproj_error * options.merge_max_reproj_error;
 
   const auto& point3D = reconstruction_->Point3D(point3D_id);
 
@@ -643,14 +637,9 @@ size_t IncrementalTriangulator::Merge(const Options& options,
               reconstruction_->Camera(test_image.CameraId());
           const Point2D& test_point2D =
               test_image.Point2D(test_track_el.point2D_idx);
-
-          const Eigen::Matrix3x4d test_proj_matrix =
-              test_image.ProjectionMatrix();
-
-          if (!HasPointPositiveDepth(test_proj_matrix, merged_xyz) ||
-              CalculateReprojectionError(test_point2D.XY(), merged_xyz,
-                                         test_proj_matrix, test_camera) >
-                  options.merge_max_reproj_error) {
+          if (CalculateSquaredReprojectionError(
+                  test_point2D.XY(), merged_xyz, test_image.Qvec(),
+                  test_image.Tvec(), test_camera) > max_squared_reproj_error) {
             merge_success = false;
             break;
           }
@@ -694,6 +683,9 @@ size_t IncrementalTriangulator::Complete(const Options& options,
     return num_completed;
   }
 
+  const double max_squared_reproj_error =
+      options.complete_max_reproj_error * options.complete_max_reproj_error;
+
   const Point3D& point3D = reconstruction_->Point3D(point3D_id);
 
   std::vector<TrackElement> queue = point3D.Track().Elements();
@@ -723,19 +715,14 @@ size_t IncrementalTriangulator::Complete(const Options& options,
           continue;
         }
 
-        const Eigen::Matrix3x4d proj_matrix = image.ProjectionMatrix();
-        if (!HasPointPositiveDepth(proj_matrix, point3D.XYZ())) {
-          continue;
-        }
-
         const Camera& camera = reconstruction_->Camera(image.CameraId());
         if (HasCameraBogusParams(options, camera)) {
           continue;
         }
 
-        const double reproj_error = CalculateReprojectionError(
-            point2D.XY(), point3D.XYZ(), proj_matrix, camera);
-        if (reproj_error > options.complete_max_reproj_error) {
+        if (CalculateSquaredReprojectionError(
+                point2D.XY(), point3D.XYZ(), image.Qvec(), image.Tvec(),
+                camera) > max_squared_reproj_error) {
           continue;
         }
 

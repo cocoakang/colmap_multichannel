@@ -27,7 +27,7 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 //
-// Author: Johannes L. Schoenberger (jsch at inf.ethz.ch)
+// Author: Johannes L. Schoenberger (jsch-at-demuc-dot-de)
 
 #ifndef COLMAP_SRC_UTIL_OPTION_MANAGER_H_
 #define COLMAP_SRC_UTIL_OPTION_MANAGER_H_
@@ -61,7 +61,7 @@ struct DelaunayMeshingOptions;
 
 class OptionManager {
  public:
-  OptionManager();
+  OptionManager(bool add_project_options = true);
 
   // Create "optimal" set of options for different reconstruction scenarios.
   // Note that the existing options are modified, so if your parameters are

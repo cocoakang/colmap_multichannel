@@ -27,7 +27,7 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 //
-// Author: Johannes L. Schoenberger (jsch at inf.ethz.ch)
+// Author: Johannes L. Schoenberger (jsch-at-demuc-dot-de)
 
 #ifndef COLMAP_SRC_MVS_GPU_MAT_REF_IMAGE_H_
 #define COLMAP_SRC_MVS_GPU_MAT_REF_IMAGE_H_
@@ -38,58 +38,85 @@
 #include "mvs/gpu_mat.h"
 
 namespace colmap {
-namespace mvs {
+	namespace mvs {
 
-class GpuMatRefImage {
- public:
-  GpuMatRefImage(const size_t width, const size_t height);
+		class GpuMatRefImage {
+		public:
+			GpuMatRefImage(const size_t width, const size_t height, const size_t depth);
 
-  // Filter image using sum convolution kernel to compute local sum of
-  // intensities. The filtered images can then be used for repeated, efficient
-  // NCC computation.
-  void Filter(const uint8_t* image_data, const size_t window_radius,
-              const size_t window_step, const float sigma_spatial,
-              const float sigma_color);
+			// Filter image using sum convolution kernel to compute local sum of
+			// intensities. The filtered images can then be used for repeated, efficient
+			// NCC computation.
+			void Filter(const uint8_t* image_data, const size_t window_radius,
+				const size_t window_step, const float sigma_spatial,
+				const float sigma_color);
 
-  // Image intensities.
-  std::unique_ptr<GpuMat<uint8_t>> image;
+			// Image intensities.
+			std::unique_ptr<GpuMat<uint8_t>> image;
 
-  // Local sum of image intensities.
-  std::unique_ptr<GpuMat<float>> sum_image;
+			// Local sum of image intensities.
+			std::unique_ptr<GpuMat<float>> sum_image;
 
-  // Local sum of squared image intensities.
-  std::unique_ptr<GpuMat<float>> squared_sum_image;
+			// Local sum of squared image intensities.
+			std::unique_ptr<GpuMat<float>> squared_sum_image;
 
- private:
-  const static size_t kBlockDimX = 16;
-  const static size_t kBlockDimY = 12;
+		private:
+			const static size_t kBlockDimX = 16;
+			const static size_t kBlockDimY = 12;
 
-  size_t width_;
-  size_t height_;
-};
+			size_t width_;
+			size_t height_;
+			size_t depth_;
+		};
 
-struct BilateralWeightComputer {
-  __device__ BilateralWeightComputer(const float sigma_spatial,
-                                     const float sigma_color)
-      : spatial_normalization_(1.0f / (2.0f * sigma_spatial * sigma_spatial)),
-        color_normalization_(1.0f / (2.0f * sigma_color * sigma_color)) {}
+		struct BilateralWeightComputer {
+			__device__ BilateralWeightComputer(const float sigma_spatial,
+				const float sigma_color)
+				: spatial_normalization_(1.0f / (2.0f * sigma_spatial * sigma_spatial)),
+				color_normalization_(1.0f / (2.0f * sigma_color * sigma_color)) {}
 
-  __device__ inline float Compute(const float row_diff, const float col_diff,
-                                  const float color1,
-                                  const float color2) const {
-    const float spatial_dist_squared =
-        row_diff * row_diff + col_diff * col_diff;
-    const float color_dist = color1 - color2;
-    return exp(-spatial_dist_squared * spatial_normalization_ -
-               color_dist * color_dist * color_normalization_);
-  }
+			__device__ inline float Compute(const float row_diff, const float col_diff,
+				float color1,
+				float color2) const {
+				const float spatial_dist_squared =
+					row_diff * row_diff + col_diff * col_diff;
+				const float color_dist = color1 - color2;
+				return exp(-spatial_dist_squared * spatial_normalization_ -
+					color_dist * color_dist * color_normalization_);
+			}
 
- private:
-  const float spatial_normalization_;
-  const float color_normalization_;
-};
+			__device__ inline float Compute(const float row_diff, const float col_diff,
+				const float *ptr_color1,
+				const float *ptr_color2,
+				const int data_depth) const {
+				//float color1 = 0, color2 = 0;
+				//for (int i = 0; i < data_depth; ++i)
+				//{
+				//	color1 += ptr_color1[i];
+				//	color2 += ptr_color2[i];
 
-}  // namespace mvs
+				//}
+				//color1 /= data_depth;
+				//color2 /= data_depth;
+
+				const float spatial_dist_squared =
+					row_diff * row_diff + col_diff * col_diff;
+				//const float color_dist = color1 - color2;
+				float color_dist_squared = 0;
+				for (int i = 0; i < data_depth; ++i)
+				{
+					color_dist_squared += (ptr_color1[i] - ptr_color2[i]) * (ptr_color1[i] - ptr_color2[i]);
+				}
+				return exp(-spatial_dist_squared * spatial_normalization_ -
+					color_dist_squared * color_normalization_);
+			}
+
+		private:
+			const float spatial_normalization_;
+			const float color_normalization_;
+		};
+
+	}  // namespace mvs
 }  // namespace colmap
 
 #endif  // COLMAP_SRC_MVS_GPU_MAT_REF_IMAGE_H_

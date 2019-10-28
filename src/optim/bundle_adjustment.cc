@@ -27,7 +27,7 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 //
-// Author: Johannes L. Schoenberger (jsch at inf.ethz.ch)
+// Author: Johannes L. Schoenberger (jsch-at-demuc-dot-de)
 
 #include "optim/bundle_adjustment.h"
 
@@ -56,10 +56,14 @@ ceres::LossFunction* BundleAdjustmentOptions::CreateLossFunction() const {
     case LossFunctionType::TRIVIAL:
       loss_function = new ceres::TrivialLoss();
       break;
+    case LossFunctionType::SOFT_L1:
+      loss_function = new ceres::SoftLOneLoss(loss_function_scale);
+      break;
     case LossFunctionType::CAUCHY:
       loss_function = new ceres::CauchyLoss(loss_function_scale);
       break;
   }
+  CHECK_NOTNULL(loss_function);
   return loss_function;
 }
 
@@ -344,7 +348,8 @@ void BundleAdjuster::AddImageToProblem(const image_t image_id,
   double* tvec_data = image.Tvec().data();
   double* camera_params_data = camera.ParamsData();
 
-  const bool constant_pose = config_.HasConstantPose(image_id);
+  const bool constant_pose =
+      !options_.refine_extrinsics || config_.HasConstantPose(image_id);
 
   // Add residuals to bundle adjustment problem.
   size_t num_observations = 0;
@@ -705,7 +710,7 @@ void ParallelBundleAdjuster::AddImagesToProblem(
 
     CHECK(!config_.HasConstantTvec(image_id))
         << "PBA cannot fix partial extrinsics";
-    if (config_.HasConstantPose(image_id)) {
+    if (!ba_options_.refine_extrinsics || config_.HasConstantPose(image_id)) {
       CHECK(config_.IsConstantCamera(image.CameraId()))
           << "PBA cannot fix extrinsics only";
       pba_camera.SetConstantCamera();
@@ -888,6 +893,9 @@ void RigBundleAdjuster::AddImageToProblem(const image_t image_id,
                                           Reconstruction* reconstruction,
                                           std::vector<CameraRig>* camera_rigs,
                                           ceres::LossFunction* loss_function) {
+  const double max_squared_reproj_error =
+      rig_options_.max_reproj_error * rig_options_.max_reproj_error;
+
   Image& image = reconstruction->Image(image_id);
   Camera& camera = reconstruction->Camera(image.CameraId());
 
@@ -947,10 +955,9 @@ void RigBundleAdjuster::AddImageToProblem(const image_t image_id,
     assert(point3D.Track().Length() > 1);
 
     if (camera_rig != nullptr &&
-        (!HasPointPositiveDepth(rig_proj_matrix, point3D.XYZ()) ||
-         CalculateReprojectionError(point2D.XY(), point3D.XYZ(),
-                                    rig_proj_matrix,
-                                    camera) > rig_options_.max_reproj_error)) {
+        CalculateSquaredReprojectionError(point2D.XY(), point3D.XYZ(),
+                                          rig_proj_matrix,
+                                          camera) > max_squared_reproj_error) {
       continue;
     }
 

@@ -27,7 +27,7 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 //
-// Author: Johannes L. Schoenberger (jsch at inf.ethz.ch)
+// Author: Johannes L. Schoenberger (jsch-at-demuc-dot-de)
 
 #include "controllers/incremental_mapper.h"
 
@@ -194,6 +194,7 @@ IncrementalMapper::Options IncrementalMapperOptions::Mapper() const {
   options.max_focal_length_ratio = max_focal_length_ratio;
   options.max_extra_param = max_extra_param;
   options.num_threads = num_threads;
+  options.local_ba_num_images = ba_local_num_images;
   return options;
 }
 
@@ -225,7 +226,7 @@ BundleAdjustmentOptions IncrementalMapperOptions::LocalBundleAdjustment()
   options.refine_extra_params = ba_refine_extra_params;
   options.loss_function_scale = 1.0;
   options.loss_function_type =
-      BundleAdjustmentOptions::LossFunctionType::CAUCHY;
+      BundleAdjustmentOptions::LossFunctionType::SOFT_L1;
   return options;
 }
 

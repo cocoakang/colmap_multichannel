@@ -27,7 +27,7 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 //
-// Author: Johannes L. Schoenberger (jsch at inf.ethz.ch)
+// Author: Johannes L. Schoenberger (jsch-at-demuc-dot-de)
 
 #include "mvs/model.h"
 
@@ -79,7 +79,10 @@ void Model::ReadFromCOLMAP(const std::string& path) {
     image_names_.push_back(image.Name());
     image_name_to_idx_.emplace(image.Name(), i);
   }
-
+  std::cout << "after emplace_back" << std::endl;
+  for (int i = 0; i < images.size(); ++i)
+	  std::cout << images[i].GetBitmap().IsRGB() << ' ';
+  std::cout << std::endl;
   points.reserve(reconstruction.NumPoints3D());
   for (const auto& point3D : reconstruction.Points3D()) {
     Point point;

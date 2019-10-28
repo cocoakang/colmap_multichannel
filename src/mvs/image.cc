@@ -27,7 +27,7 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 //
-// Author: Johannes L. Schoenberger (jsch at inf.ethz.ch)
+// Author: Johannes L. Schoenberger (jsch-at-demuc-dot-de)
 
 #include "mvs/image.h"
 
@@ -53,6 +53,7 @@ Image::Image(const std::string& path, const size_t width, const size_t height,
 
 void Image::SetBitmap(const Bitmap& bitmap) {
   bitmap_ = bitmap;
+  depth_ = bitmap_.Channels();
   CHECK_EQ(width_, bitmap_.Width());
   CHECK_EQ(height_, bitmap_.Height());
 }

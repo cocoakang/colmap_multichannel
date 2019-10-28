@@ -27,7 +27,7 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 //
-// Author: Johannes L. Schoenberger (jsch at inf.ethz.ch)
+// Author: Johannes L. Schoenberger (jsch-at-demuc-dot-de)
 
 #include "mvs/fusion.h"
 
@@ -154,7 +154,6 @@ void StereoFusion::Run() {
   workspace_options.image_as_rgb = true;
   workspace_options.cache_size = options_.cache_size;
   workspace_options.workspace_path = workspace_path_;
-  workspace_options.workspace_format = workspace_format_;
   workspace_options.workspace_format = workspace_format_;
   workspace_options.input_type = input_type_;
 

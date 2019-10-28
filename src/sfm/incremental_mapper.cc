@@ -27,7 +27,7 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 //
-// Author: Johannes L. Schoenberger (jsch at inf.ethz.ch)
+// Author: Johannes L. Schoenberger (jsch-at-demuc-dot-de)
 
 #include "sfm/incremental_mapper.h"
 
@@ -460,6 +460,7 @@ bool IncrementalMapper::RegisterNextImage(const Options& options,
     } else {
       abs_pose_options.estimate_focal_length = false;
       abs_pose_refinement_options.refine_focal_length = false;
+      abs_pose_refinement_options.refine_extra_params = false;
     }
   } else {
     // Camera not refined before.
@@ -515,6 +516,7 @@ bool IncrementalMapper::RegisterNextImage(const Options& options,
         const point3D_t point3D_id = tri_corrs[i].second;
         const TrackElement track_el(image_id, point2D_idx);
         reconstruction_->AddObservation(point3D_id, track_el);
+        triangulator_->AddModifiedPoint3D(point3D_id);
       }
     }
   }

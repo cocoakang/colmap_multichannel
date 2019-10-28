@@ -27,7 +27,7 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 //
-// Author: Johannes L. Schoenberger (jsch at inf.ethz.ch)
+// Author: Johannes L. Schoenberger (jsch-at-demuc-dot-de)
 
 #include "base/camera_rig.h"
 
@@ -136,7 +136,7 @@ double CameraRig::ComputeScale(const Reconstruction& reconstruction) const {
     // Compute the projection relative and absolute projection centers.
     for (size_t i = 0; i < NumCameras(); ++i) {
       const auto& image = reconstruction.Image(snapshot[i]);
-      rel_proj_centers[i] = ProjectionCenterFromParameters(
+      rel_proj_centers[i] = ProjectionCenterFromPose(
           RelativeQvec(image.CameraId()), RelativeTvec(image.CameraId()));
       abs_proj_centers[i] = image.ProjectionCenter();
     }

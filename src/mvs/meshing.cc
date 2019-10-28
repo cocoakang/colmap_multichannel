@@ -27,7 +27,7 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 //
-// Author: Johannes L. Schoenberger (jsch at inf.ethz.ch)
+// Author: Johannes L. Schoenberger (jsch-at-demuc-dot-de)
 
 #include "mvs/meshing.h"
 
@@ -249,6 +249,7 @@ class DelaunayMeshingInput {
       const auto& image = reconstruction.Image(image_id);
       DelaunayMeshingInput::Image input_image;
       input_image.camera_id = image.CameraId();
+      input_image.proj_matrix = image.ProjectionMatrix().cast<float>();
       input_image.proj_center = image.ProjectionCenter().cast<float>();
       input_image.point_idxs.reserve(image.NumPoints3D());
       for (const auto& point2D : image.Points2D()) {
@@ -273,6 +274,7 @@ class DelaunayMeshingInput {
         const auto& image = reconstruction.Image(image_id);
         DelaunayMeshingInput::Image input_image;
         input_image.camera_id = image.CameraId();
+        input_image.proj_matrix = image.ProjectionMatrix().cast<float>();
         input_image.proj_center = image.ProjectionCenter().cast<float>();
         images.push_back(input_image);
       }

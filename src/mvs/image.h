@@ -27,7 +27,7 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 //
-// Author: Johannes L. Schoenberger (jsch at inf.ethz.ch)
+// Author: Johannes L. Schoenberger (jsch-at-demuc-dot-de)
 
 #ifndef COLMAP_SRC_MVS_IMAGE_H_
 #define COLMAP_SRC_MVS_IMAGE_H_
@@ -52,6 +52,7 @@ class Image {
 
   inline size_t GetWidth() const;
   inline size_t GetHeight() const;
+  inline size_t GetDepth() const;
 
   void SetBitmap(const Bitmap& bitmap);
   inline const Bitmap& GetBitmap() const;
@@ -72,6 +73,7 @@ class Image {
   std::string path_;
   size_t width_;
   size_t height_;
+  size_t depth_;
   float K_[9];
   float R_[9];
   float T_[3];
@@ -101,6 +103,8 @@ void RotatePose(const float RR[9], float R[9], float T[3]);
 size_t Image::GetWidth() const { return width_; }
 
 size_t Image::GetHeight() const { return height_; }
+
+size_t Image::GetDepth() const { return depth_; }
 
 const Bitmap& Image::GetBitmap() const { return bitmap_; }
 

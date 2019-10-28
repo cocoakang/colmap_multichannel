@@ -27,7 +27,7 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 //
-// Author: Johannes L. Schoenberger (jsch at inf.ethz.ch)
+// Author: Johannes L. Schoenberger (jsch-at-demuc-dot-de)
 
 #ifndef COLMAP_SRC_MVS_WORKSPACE_H_
 #define COLMAP_SRC_MVS_WORKSPACE_H_
@@ -44,7 +44,9 @@ namespace mvs {
 
 class Workspace {
  public:
+  
   struct Options {
+	
     // The maximum cache size in gigabytes.
     double cache_size = 32.0;
 
@@ -52,7 +54,8 @@ class Workspace {
     int max_image_size = -1;
 
     // Whether to read image as RGB or gray scale.
-    bool image_as_rgb = true;
+    bool image_as_rgb = true; //TODO-x: delete
+	ImageType image_type = RGB;
 
     // Location and type of workspace.
     std::string workspace_path;

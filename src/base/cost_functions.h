@@ -27,7 +27,7 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 //
-// Author: Johannes L. Schoenberger (jsch at inf.ethz.ch)
+// Author: Johannes L. Schoenberger (jsch-at-demuc-dot-de)
 
 #ifndef COLMAP_SRC_BASE_COST_FUNCTIONS_H_
 #define COLMAP_SRC_BASE_COST_FUNCTIONS_H_
@@ -45,7 +45,7 @@ template <typename CameraModel>
 class BundleAdjustmentCostFunction {
  public:
   explicit BundleAdjustmentCostFunction(const Eigen::Vector2d& point2D)
-      : x_(point2D(0)), y_(point2D(1)) {}
+      : observed_x_(point2D(0)), observed_y_(point2D(1)) {}
 
   static ceres::CostFunction* Create(const Eigen::Vector2d& point2D) {
     return (new ceres::AutoDiffCostFunction<
@@ -74,15 +74,15 @@ class BundleAdjustmentCostFunction {
                               &residuals[0], &residuals[1]);
 
     // Re-projection error.
-    residuals[0] -= T(x_);
-    residuals[1] -= T(y_);
+    residuals[0] -= T(observed_x_);
+    residuals[1] -= T(observed_y_);
 
     return true;
   }
 
  private:
-  const double x_;
-  const double y_;
+  const double observed_x_;
+  const double observed_y_;
 };
 
 // Bundle adjustment cost function for variable
@@ -100,8 +100,8 @@ class BundleAdjustmentConstantPoseCostFunction {
         tx_(tvec(0)),
         ty_(tvec(1)),
         tz_(tvec(2)),
-        x_(point2D(0)),
-        y_(point2D(1)) {}
+        observed_x_(point2D(0)),
+        observed_y_(point2D(1)) {}
 
   static ceres::CostFunction* Create(const Eigen::Vector4d& qvec,
                                      const Eigen::Vector3d& tvec,
@@ -133,22 +133,22 @@ class BundleAdjustmentConstantPoseCostFunction {
                               &residuals[0], &residuals[1]);
 
     // Re-projection error.
-    residuals[0] -= T(x_);
-    residuals[1] -= T(y_);
+    residuals[0] -= T(observed_x_);
+    residuals[1] -= T(observed_y_);
 
     return true;
   }
 
  private:
-  double qw_;
-  double qx_;
-  double qy_;
-  double qz_;
-  double tx_;
-  double ty_;
-  double tz_;
-  double x_;
-  double y_;
+  const double qw_;
+  const double qx_;
+  const double qy_;
+  const double qz_;
+  const double tx_;
+  const double ty_;
+  const double tz_;
+  const double observed_x_;
+  const double observed_y_;
 };
 
 // Rig bundle adjustment cost function for variable camera pose and calibration
@@ -161,7 +161,7 @@ template <typename CameraModel>
 class RigBundleAdjustmentCostFunction {
  public:
   explicit RigBundleAdjustmentCostFunction(const Eigen::Vector2d& point2D)
-      : x_(point2D(0)), y_(point2D(1)) {}
+      : observed_x_(point2D(0)), observed_y_(point2D(1)) {}
 
   static ceres::CostFunction* Create(const Eigen::Vector2d& point2D) {
     return (new ceres::AutoDiffCostFunction<
@@ -202,15 +202,15 @@ class RigBundleAdjustmentCostFunction {
                               &residuals[0], &residuals[1]);
 
     // Re-projection error.
-    residuals[0] -= T(x_);
-    residuals[1] -= T(y_);
+    residuals[0] -= T(observed_x_);
+    residuals[1] -= T(observed_y_);
 
     return true;
   }
 
  private:
-  const double x_;
-  const double y_;
+  const double observed_x_;
+  const double observed_y_;
 };
 
 // Cost function for refining two-view geometry based on the Sampson-Error.

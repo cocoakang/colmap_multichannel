@@ -64,7 +64,7 @@ class PatchMatchCuda {
   std::vector<int> GetConsistentImageIdxs() const;
 
  private:
-  template <int kWindowSize, int kWindowStep, int maxDepth>
+  template <int kWindowSize, int kWindowStep>
   void RunWithWindowSizeAndStep();
 
   void ComputeCudaConfig();
@@ -90,7 +90,6 @@ class PatchMatchCuda {
   // Original (not rotated) dimension of reference image.
   size_t ref_width_;
   size_t ref_height_;
-  size_t ref_depth_;
 
   // Rotation of reference image in pi/2. This is equivalent to the number of
   // calls to `rotate` mod 4.
@@ -125,7 +124,6 @@ class PatchMatchCuda {
   std::unique_ptr<GpuMatRefImage> ref_image_;
   std::unique_ptr<GpuMat<float>> depth_map_;
   std::unique_ptr<GpuMat<float>> normal_map_;
-  std::unique_ptr<GpuMat<float>> source_map_;
   std::unique_ptr<GpuMat<float>> sel_prob_map_;
   std::unique_ptr<GpuMat<float>> prev_sel_prob_map_;
   std::unique_ptr<GpuMat<float>> cost_map_;

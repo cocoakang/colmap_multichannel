@@ -27,7 +27,7 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 //
-// Author: Johannes L. Schoenberger (jsch at inf.ethz.ch)
+// Author: Johannes L. Schoenberger (jsch-at-demuc-dot-de)
 
 #include "util/bitmap.h"
 
@@ -135,6 +135,24 @@ std::vector<uint8_t> Bitmap::ConvertToRowMajorArray() const {
     }
   }
   return array;
+}
+
+std::vector<uint8_t> Bitmap::ConvertToDepthRowMajorArray() const {
+	std::vector<uint8_t> array(width_ * height_ * channels_);
+	size_t i = 0;
+	for (int d = 0; d < channels_; ++d) {
+		for (int y = 0; y < height_; ++y) {
+			const uint8_t* line = FreeImage_GetScanLine(data_.get(), height_ - 1 - y);
+			for (int x = 0; x < width_; ++x) {
+			
+				array[i] = line[x * channels_ + d];
+				//array[i] = (line[x * channels_ + 0] + line[x * channels_ + 1] + line[x * channels_ + 2]) / 3;
+					i += 1;
+			
+			}
+		}
+	}
+	return array;
 }
 
 std::vector<uint8_t> Bitmap::ConvertToColMajorArray() const {
