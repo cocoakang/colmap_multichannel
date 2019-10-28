@@ -1,0 +1,1 @@
+python scripts/python/build.py --build_path D:/SIG20/colmap_orgin/colmap_build --colmap_path D:/SIG20/colmap_orgin/colmap-3.5/colmap-3.5 --boost_path "D:/LIBRARIES/boost_1_71_0" --qt_path "D:/SOFTWARES/Qt/5.9.8/msvc2017_64" --cuda_path "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v10.0" --cgal_path "D:/LIBRARIES/CGAL/build"
