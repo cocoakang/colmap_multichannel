@@ -45,11 +45,26 @@
 namespace colmap {
 
 Bitmap::Bitmap()
-    : data_(nullptr, &FreeImage_Unload), width_(0), height_(0), channels_(0) {}
+    : data_(nullptr, &FreeImage_Unload), width_(0), height_(0), depth_(0), channels_(0) {}
+
+//Bitmap::~Bitmap()
+//{
+//	if (bin_data_ != nullptr)
+//		delete[] bin_data_;
+//}
 
 Bitmap::Bitmap(const Bitmap& other) : Bitmap() {
-  if (other.data_) {
+	height_ = other.height_;
+	width_ = other.width_;
+	depth_ = other.depth_;
+	if (other.data_) {
     SetPtr(FreeImage_Clone(other.data_.get()));
+  }
+  if (other.bin_data_)
+  {
+	  
+	  bin_data_ = new float[size_t(height_) * width_ * depth_];
+	  memcpy_s(bin_data_, size_t(height_) * width_ * depth_ * sizeof(float), other.bin_data_, size_t(height_) * width_ * depth_ * sizeof(float));
   }
 }
 
@@ -58,13 +73,24 @@ Bitmap::Bitmap(Bitmap&& other) : Bitmap() {
   width_ = other.width_;
   height_ = other.height_;
   channels_ = other.channels_;
+  depth_ = other.depth_;
+  bin_data_ = std::move(other.bin_data_);
 }
 
 Bitmap::Bitmap(FIBITMAP* data) : Bitmap() { SetPtr(data); }
 
 Bitmap& Bitmap::operator=(const Bitmap& other) {
-  if (other.data_) {
+	height_ = other.height_;
+	width_ = other.width_;
+	depth_ = other.depth_;
+	if (other.data_) {
     SetPtr(FreeImage_Clone(other.data_.get()));
+  }
+  if (other.bin_data_)
+  {
+	  
+	  bin_data_ = new float[size_t(height_) * width_ * depth_];
+	  memcpy_s(bin_data_, size_t(height_) * width_ * depth_ * sizeof(float), other.bin_data_, size_t(height_) * width_ * depth_ * sizeof(float));
   }
   return *this;
 }
@@ -75,8 +101,33 @@ Bitmap& Bitmap::operator=(Bitmap&& other) {
     width_ = other.width_;
     height_ = other.height_;
     channels_ = other.channels_;
+	depth_ = other.depth_;
+	bin_data_ = std::move(other.bin_data_);
+
   }
+ 
   return *this;
+}
+
+bool Bitmap::Allocate(const int width, const int height, const ImageType image_type, const int depth_for_multi) {
+	if (image_type == GREY)
+		return Allocate(width, height, false);
+	if (image_type == RGB)
+		return Allocate(width, height, true);
+
+	FIBITMAP* data = nullptr;
+	width_ = width;
+	height_ = height;
+	depth_ = depth_for_multi;
+
+	channels_ = 3;
+	int kNumBitsPerPixel = 3 * 8;
+	//std::cout << "in allocate " << kNumBitsPerPixel << std::endl;
+	data = FreeImage_Allocate(width, height, kNumBitsPerPixel);
+	data_ = FIBitmapPtr(data, &FreeImage_Unload);
+
+	bin_data_ = new float[size_t(width_) * height_ * depth_];
+	return bin_data_ != nullptr;
 }
 
 bool Bitmap::Allocate(const int width, const int height, const bool as_rgb) {
@@ -97,6 +148,11 @@ bool Bitmap::Allocate(const int width, const int height, const bool as_rgb) {
 }
 
 void Bitmap::Deallocate() {
+  if (bin_data_ != nullptr)
+  {
+	  delete[] bin_data_;
+	  bin_data_ = nullptr;
+  }
   data_.reset();
   width_ = 0;
   height_ = 0;
@@ -137,22 +193,42 @@ std::vector<uint8_t> Bitmap::ConvertToRowMajorArray() const {
   return array;
 }
 
-std::vector<uint8_t> Bitmap::ConvertToDepthRowMajorArray() const {
-	std::vector<uint8_t> array(width_ * height_ * channels_);
-	size_t i = 0;
-	for (int d = 0; d < channels_; ++d) {
-		for (int y = 0; y < height_; ++y) {
-			const uint8_t* line = FreeImage_GetScanLine(data_.get(), height_ - 1 - y);
-			for (int x = 0; x < width_; ++x) {
-			
-				array[i] = line[x * channels_ + d];
-				//array[i] = (line[x * channels_ + 0] + line[x * channels_ + 1] + line[x * channels_ + 2]) / 3;
+std::vector<float> Bitmap::ConvertToDepthRowMajorArray(const ImageType image_type) const {
+	if (image_type == MULTI)
+	{
+		std::vector<float> array(width_ * height_ * depth_);
+		size_t i = 0;
+		for (int d = 0; d < depth_; ++d) {
+			for (int y = 0; y < height_; ++y) {
+				const float* line = bin_data_ + (size_t(y) * width_ * depth_); 
+				for (int x = 0; x < width_; ++x) {
+					array[i] = line[x * depth_ + d];
 					i += 1;
-			
+
+				}
 			}
 		}
+		return array;
 	}
-	return array;
+	else
+	{
+		std::vector<float> array(width_ * height_ * channels_);
+		size_t i = 0;
+		for (int d = 0; d < channels_; ++d) {
+			for (int y = 0; y < height_; ++y) {
+				const uint8_t* line = FreeImage_GetScanLine(data_.get(), height_ - 1 - y);
+				for (int x = 0; x < width_; ++x) {
+
+					array[i] = line[x * channels_ + d] / 255.0;
+					//array[i] = (line[x * channels_ + 0] + line[x * channels_ + 1] + line[x * channels_ + 2]) / 3;
+					i += 1;
+
+				}
+			}
+		}
+		return array;
+	}
+	return std::vector<float>();
 }
 
 std::vector<uint8_t> Bitmap::ConvertToColMajorArray() const {
@@ -192,6 +268,24 @@ bool Bitmap::GetPixel(const int x, const int y,
   return false;
 }
 
+bool Bitmap::GetPixel(const int x, const int y,
+	std::vector<float>& color) const {
+	if (x < 0 || x >= width_ || y < 0 || y >= height_) {
+		return false;
+	}
+
+	const float* line = bin_data_ + (size_t(y) * width_ * depth_);
+
+	color.resize(depth_);
+	for (int i = 0; i < color.size(); ++i)
+	{
+		color[i] = line[x * depth_ + i];
+	}
+
+	return true;
+}
+
+
 bool Bitmap::SetPixel(const int x, const int y,
                       const BitmapColor<uint8_t>& color) {
   if (x < 0 || x >= width_ || y < 0 || y >= height_) {
@@ -213,10 +307,33 @@ bool Bitmap::SetPixel(const int x, const int y,
   return false;
 }
 
+bool Bitmap::SetPixel(const int x, const int y, const std::vector<float>& color) {
+	if (x < 0 || x >= width_ || y < 0 || y >= height_) {
+		return false;
+	}
+	if (color.size() > depth_)
+		return false;
+
+	float* line = bin_data_ + (size_t(y) * width_ * depth_);
+
+	for (int i = 0; i < depth_; ++i)
+	{
+		line[depth_ * x + i] = color[i];
+	}
+	return true;
+}
+
 const uint8_t* Bitmap::GetScanline(const int y) const {
   CHECK_GE(y, 0);
   CHECK_LT(y, height_);
   return FreeImage_GetScanLine(data_.get(), height_ - 1 - y);
+}
+
+const float* Bitmap::GetScanlineBin(const int y) const {
+	CHECK_GE(y, 0);
+	CHECK_LT(y, height_);
+	float *res = (bin_data_ + (size_t(y) * width_ * depth_));
+	return res;
 }
 
 void Bitmap::Fill(const BitmapColor<uint8_t>& color) {
@@ -239,6 +356,13 @@ bool Bitmap::InterpolateNearestNeighbor(const double x, const double y,
   const int xx = static_cast<int>(std::round(x));
   const int yy = static_cast<int>(std::round(y));
   return GetPixel(xx, yy, color);
+}
+
+bool Bitmap::InterpolateNearestNeighbor(const double x, const double y,
+	std::vector<float>& color) const {
+	const int xx = static_cast<int>(std::round(x));
+	const int yy = static_cast<int>(std::round(y));
+	return GetPixel(xx, yy, color);
 }
 
 bool Bitmap::InterpolateBilinear(const double x, const double y,
@@ -297,6 +421,44 @@ bool Bitmap::InterpolateBilinear(const double x, const double y,
   }
 
   return false;
+}
+
+bool Bitmap::InterpolateBilinear(const double x, const double y,
+	std::vector<float>& color) const {
+	// FreeImage's coordinate system origin is in the lower left of the image.
+
+
+	const int x0 = static_cast<int>(std::floor(x));
+	const int x1 = x0 + 1;
+	const int y0 = static_cast<int>(std::floor(y));
+	const int y1 = y0 + 1;
+
+	if (x0 < 0 || x1 >= width_ || y0 < 0 || y1 >= height_) {
+		return false;
+	}
+
+	const double dx = x - x0;
+	const double dy = y - y0;
+	const double dx_1 = 1 - dx;
+	const double dy_1 = 1 - dy;
+
+	const float* line0 = bin_data_ + (size_t(y0) * width_ * depth_); 
+	const float* line1 = bin_data_ + (size_t(y1) * width_ * depth_); 
+
+	color.resize(depth_);
+	for (int i = 0; i < depth_; ++i)
+	{
+		float p00 = line0[x0 * depth_ + i];
+		float p01 = line0[x1 * depth_ + i];
+		float p10 = line1[x0 * depth_ + i];
+		float p11 = line1[x1 * depth_ + i];
+
+		float v0 = dx_1 * p00 + dx * p01;
+		float v1 = dx_1 * p10 + dx * p11;
+		color[i] = dy_1 * v0 + dy * v1;
+	}
+
+	return true;
 }
 
 bool Bitmap::ExifFocalLength(double* focal_length) const {
@@ -424,11 +586,79 @@ bool Bitmap::ExifAltitude(double* altitude) const {
   return false;
 }
 
+bool Bitmap::Read(const std::string& path, const ImageType image_type) {
+	//std::cout << path << std::endl;
+	if (image_type == GREY)
+		return Read(path, false);
+	if (image_type == RGB)
+		return Read(path, true);
+
+	if (!ExistsFile(path)) {
+		return false;
+	}
+	
+	if (path.size() < 3 || path.substr(path.size() - 3) != "bin")
+	{
+		return false;
+	}
+
+	FILE *fp;
+	fopen_s(&fp, path.c_str(), "rb");
+	if (fp == NULL)
+		return false;
+
+	fread(&width_, sizeof(int), 1, fp);
+	fread(&height_, sizeof(int), 1, fp);
+	fread(&depth_, sizeof(int), 1, fp);
+	//std::cout << width_ << ' ' << height_ << ' ' << channels_ << std::endl;
+	if (!Allocate(width_, height_, MULTI, depth_))
+	{
+		//std::cout << "failed to allocate" << std::endl;
+		return false;
+	}
+	//std::cout << width_ << ' ' << height_ << ' ' << channels_ << ' ' << FreeImage_GetBPP(data_.get()) << std::endl;
+
+	std::vector<uint8_t> color(depth_);
+	for (int i = 0; i < height_; ++i)
+	{
+		for (int j = 0; j < width_; ++j)
+		{
+			//std::cout << i << ' ' << j << ' ';
+			for (int k = 0; k < depth_; ++k)
+			{
+				float v;
+				fread(&v, sizeof(float), 1, fp);
+				color[k] = v * 255;
+				//if (v!=0.0)
+				//std::cout << v << ' ';
+			}
+			BitmapColor<uint8_t> bitcolor(color[0], color[1], color[2]);
+			//std::cout << std::endl;
+			if (SetPixel(j, i, bitcolor) == false)
+			{
+				std::cout << "failed to setpixel" << std::endl;
+				return false;
+			}
+		}
+	}
+	//std::cout << "done1" << std::endl;
+	fseek(fp, sizeof(int) * 3, 0);
+	fread(bin_data_, sizeof(float), size_t(width_) * height_ * depth_, fp);
+	//size_t sum = 0;
+	//for (size_t i = 0; i < size_t(width_) * height_ * depth_; ++i)
+	//	if (bin_data_[i] != 0.0)
+	//		sum++;
+	//std::cout << "read sum = " << sum << std::endl;
+	//std::cout << "done" << std::endl;
+
+	fclose(fp);
+	return true;
+}
+
 bool Bitmap::Read(const std::string& path, const bool as_rgb) {
   if (!ExistsFile(path)) {
     return false;
   }
-
   const FREE_IMAGE_FORMAT format = FreeImage_GetFileType(path.c_str(), 0);
 
   if (format == FIF_UNKNOWN) {
@@ -460,6 +690,30 @@ bool Bitmap::Read(const std::string& path, const bool as_rgb) {
   channels_ = as_rgb ? 3 : 1;
 
   return true;
+}
+
+bool Bitmap::Write(const std::string& path, const ImageType image_type, const FREE_IMAGE_FORMAT format,
+	const int flags) const {
+	bool success = Write(path, format, flags);
+
+	if (image_type == MULTI)
+	{
+		FILE *fp;
+		fopen_s(&fp, (path + ".bin").c_str(), "wb");
+		if (fp == nullptr)
+			return false;
+		fwrite(&width_, sizeof(int), 1, fp);
+		fwrite(&height_, sizeof(int), 1, fp);
+		fwrite(&depth_, sizeof(int), 1, fp);
+		//size_t sum = 0;
+		//for (size_t i = 0; i < size_t(width_) * height_ * depth_; ++i)
+		//	if (bin_data_[i] != 0.0)
+		//		sum++;
+		//std::cout << "sum = " << sum << std::endl;
+		fwrite(bin_data_, sizeof(float), size_t(width_) * height_ * depth_, fp);
+		fclose(fp);
+	}
+	return success;
 }
 
 bool Bitmap::Write(const std::string& path, const FREE_IMAGE_FORMAT format,
@@ -525,6 +779,41 @@ void Bitmap::Rescale(const int new_width, const int new_height,
   SetPtr(FreeImage_Rescale(data_.get(), new_width, new_height, filter));
 }
 
+void Bitmap::Rescale(const int new_width, const int new_height,
+	const ImageType image_type) {
+
+	if (image_type == MULTI)
+	{
+		float *new_data = new float[size_t(new_width) * new_height * depth_];
+		for (int i = 0; i < new_height; ++i)
+		{
+			float* line = new_data + (size_t(i) * new_width * depth_);
+
+
+			for (int j = 0; j < new_width; ++j)
+			{
+				float x = (j + 0.5) * width_ / new_width - 0.5;
+				float y = (i + 0.5) * height_ / new_height - 0.5;
+				std::vector<float> color;
+				InterpolateBilinear(x, y, color);
+
+				for (int k = 0; k < depth_; ++k)
+				{
+					line[depth_ * j + k] = color[k];
+				}
+			}
+		}
+		delete[] bin_data_;
+		bin_data_ = new_data;
+	}
+
+	Rescale(new_width, new_height);
+
+	
+
+	
+}
+
 Bitmap Bitmap::Clone() const { return Bitmap(FreeImage_Clone(data_.get())); }
 
 Bitmap Bitmap::CloneAsGrey() const {
@@ -547,6 +836,18 @@ void Bitmap::CloneMetadata(Bitmap* target) const {
   CHECK_NOTNULL(target);
   CHECK_NOTNULL(target->Data());
   FreeImage_CloneMetadata(data_.get(), target->Data());
+}
+
+void Bitmap::CloneMetadata(Bitmap* target, const ImageType image_type) const {
+	if (image_type != MULTI)
+		return CloneMetadata(target);
+
+	CHECK_NOTNULL(target);
+	CHECK_NOTNULL(target->Data());
+	CHECK_NOTNULL(target->BinData());
+	FreeImage_CloneMetadata(data_.get(), target->Data());
+	memcpy_s(target->BinData(), size_t(target->Width()) * target->Height() * target->Depth() * sizeof(float),
+		bin_data_, size_t(width_) * height_ * depth_ * sizeof(float));
 }
 
 bool Bitmap::ReadExifTag(const FREE_IMAGE_MDMODEL model,

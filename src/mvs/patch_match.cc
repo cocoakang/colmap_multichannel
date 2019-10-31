@@ -52,6 +52,7 @@ PatchMatch::~PatchMatch() {}
 
 void PatchMatchOptions::Print() const {
   PrintHeading2("PatchMatchOptions");
+  PrintOption(multi_channel);
   PrintOption(max_image_size);
   PrintOption(gpu_index);
   PrintOption(depth_min);
@@ -162,12 +163,12 @@ void PatchMatch::Run() {
   //std::cout << problem_.ref_image_idx << std::endl;
   std::cout << "model images channels: " << std::endl;
   for (int i = 0; i < problem_.images->size(); ++i)
-	  std::cout << (*problem_.images)[i].GetDepth() << ' ' << (*problem_.images)[i].GetBitmap().IsRGB() << ' ' << (*problem_.images)[i].GetBitmap().Channels() << std::endl;
+	  std::cout << (*problem_.images)[i].GetDepth() << ' ' << (*problem_.images)[i].GetBitmap().IsRGB() << ' ' << (*problem_.images)[i].GetBitmap().Channels() << ' ' << (*problem_.images)[i].GetBitmap().Depth() << std::endl;
   std::cout << std::endl;
   Check();
 
   patch_match_cuda_.reset(new PatchMatchCuda(options_, problem_));
-  patch_match_cuda_->Run();
+  //patch_match_cuda_->Run();
 }
 
 DepthMap PatchMatch::GetDepthMap() const {
@@ -209,6 +210,7 @@ void PatchMatchController::Run() {
   // If geometric consistency is enabled, then photometric output must be
   // computed first for all images without filtering.
   if (options_.geom_consistency) {
+    std::cout <<"[TO KKZ] You set geom_consistency as required, so I have to process photometric first(without filer!!)"<<std::endl;
     auto photometric_options = options_;
     photometric_options.geom_consistency = false;
     photometric_options.filter = false;
@@ -234,7 +236,7 @@ void PatchMatchController::Run() {
 
 void PatchMatchController::ReadWorkspace() {
   std::cout << "Reading workspace..." << std::endl;
-
+  
   Workspace::Options workspace_options;
 
   auto workspace_format_lower_case = workspace_format_;
@@ -246,12 +248,13 @@ void PatchMatchController::ReadWorkspace() {
 
   workspace_options.max_image_size = options_.max_image_size;
   workspace_options.image_as_rgb = true; //CHANGED //TODO-x: delete
-  workspace_options.image_type = RGB;
+  workspace_options.image_type = options_.multi_channel ? MULTI : GREY;
+  std::cout <<"[TO KKZ] image_type:"<<workspace_options.image_type<<" MULTI:"<<MULTI<<" GREY:"<<GREY<<std::endl;
   workspace_options.cache_size = options_.cache_size;
   workspace_options.workspace_path = workspace_path_;
   workspace_options.workspace_format = workspace_format_;
   workspace_options.input_type = options_.geom_consistency ? "photometric" : "";
-
+  
   workspace_.reset(new Workspace(workspace_options));
  
 
@@ -294,7 +297,7 @@ void PatchMatchController::ReadProblems() {
   for (size_t i = 0; i < config.size(); ++i) {
     std::string& config_line = config[i];
     StringTrim(&config_line);
-
+    
     if (config_line.empty() || config_line[0] == '#') {
       continue;
     }
@@ -310,7 +313,10 @@ void PatchMatchController::ReadProblems() {
     problem_config.ref_image_name = ref_image_name;
     problem_config.src_image_names = CSVToVector<std::string>(config_line);
     problem_configs.push_back(problem_config);
-
+    // std::cout <<"[TO KKZ] ref_image_name:"<<problem_config.ref_image_name<<std::endl;
+    // for(auto sr_name : problem_config.src_image_names){
+    //   std::cout <<" src_image_names:"<<sr_name<<std::endl;
+    // }
     ref_image_name.clear();
   }
 
@@ -497,13 +503,14 @@ void PatchMatchController::ProcessProblem(const PatchMatchOptions& options,
     std::cout << "Reading inputs..." << std::endl;
     for (const auto image_idx : used_image_idxs) {
       images.at(image_idx).SetBitmap(workspace_->GetBitmap(image_idx));
+	  //std::cout << images.at(image_idx).GetBitmap().Depth() << std::endl;
       if (options.geom_consistency) {
         depth_maps.at(image_idx) = workspace_->GetDepthMap(image_idx);
         normal_maps.at(image_idx) = workspace_->GetNormalMap(image_idx);
       }
+
     }
   }
-
   problem.Print();
   patch_match_options.Print();
 

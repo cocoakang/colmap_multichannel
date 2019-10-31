@@ -43,7 +43,8 @@ namespace colmap {
 // (i.e. an inverse mapping). The function allocates the target image.
 void WarpImageBetweenCameras(const Camera& source_camera,
                              const Camera& target_camera,
-                             const Bitmap& source_image, Bitmap* target_image);
+                             const Bitmap& source_image, Bitmap* target_image,
+							 const ImageType image_type = RGB);
 
 // Warp an image with the given homography, where H defines the pixel mapping
 // from the target to source image. Note that the pixel centers are assumed to

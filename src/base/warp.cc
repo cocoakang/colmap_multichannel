@@ -50,14 +50,20 @@ float GetPixelConstantBorder(const float* data, const int rows, const int cols,
 
 void WarpImageBetweenCameras(const Camera& source_camera,
                              const Camera& target_camera,
-                             const Bitmap& source_image, Bitmap* target_image) {
+                             const Bitmap& source_image, Bitmap* target_image,
+							 const ImageType image_type) {
   CHECK_EQ(source_camera.Width(), source_image.Width());
   CHECK_EQ(source_camera.Height(), source_image.Height());
   CHECK_NOTNULL(target_image);
 
+  //target_image->Allocate(static_cast<int>(source_camera.Width()),
+  //                       static_cast<int>(source_camera.Height()),
+  //                       source_image.IsRGB());
+  //std::cout << "before Allocate" << std::endl;
   target_image->Allocate(static_cast<int>(source_camera.Width()),
-                         static_cast<int>(source_camera.Height()),
-                         source_image.IsRGB());
+	  static_cast<int>(source_camera.Height()),
+	  image_type, source_image.Depth());
+  //std::cout << target_image->Width() << ' ' << target_image->Height() << ' ' << target_image->Depth() << ' ' << target_image->Channels() << std::endl;
 
   // To avoid aliasing, perform the warping in the source resolution and
   // then rescale the image at the end.
@@ -66,6 +72,7 @@ void WarpImageBetweenCameras(const Camera& source_camera,
       target_camera.Height() != source_camera.Height()) {
     scaled_target_camera.Rescale(source_camera.Width(), source_camera.Height());
   }
+  //std::cout << "before iteration" << std::endl;
 
   Eigen::Vector2d image_point;
   for (int y = 0; y < target_image->Height(); ++y) {
@@ -80,18 +87,34 @@ void WarpImageBetweenCameras(const Camera& source_camera,
           source_camera.WorldToImage(world_point);
 
       BitmapColor<float> color;
+	  
       if (source_image.InterpolateBilinear(source_point.x() - 0.5,
                                            source_point.y() - 0.5, &color)) {
         target_image->SetPixel(x, y, color.Cast<uint8_t>());
       } else {
         target_image->SetPixel(x, y, BitmapColor<uint8_t>(0));
       }
+
+	  if (image_type == MULTI)
+	  {
+		  std::vector<float> bin_color;
+		  if (source_image.InterpolateBilinear(source_point.x() - 0.5,
+			  source_point.y() - 0.5, bin_color)) {
+			  target_image->SetPixel(x, y, bin_color);
+		  }
+		  else {
+			  target_image->SetPixel(x, y, std::vector<float>(source_image.Depth(), 0));
+		  }
+	  }
     }
   }
 
   if (target_camera.Width() != source_camera.Width() ||
       target_camera.Height() != source_camera.Height()) {
-    target_image->Rescale(target_camera.Width(), target_camera.Height());
+	std::cout << "before " << target_image->Width() << ' ' << target_image->Height() << std::endl;
+
+    target_image->Rescale(target_camera.Width(), target_camera.Height(), image_type);
+	std::cout << "after " << target_image->Width() << ' ' << target_image->Height() << std::endl;
   }
 }
 

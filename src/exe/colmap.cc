@@ -741,13 +741,15 @@ int RunImageUndistorter(int argc, char** argv) {
   std::string input_path;
   std::string output_path;
   std::string output_type = "COLMAP";
-
+  std::string input_type = "IMG";
   UndistortCameraOptions undistort_camera_options;
 
   OptionManager options;
   options.AddImageOptions();
   options.AddRequiredOption("input_path", &input_path);
   options.AddRequiredOption("output_path", &output_path);
+  options.AddDefaultOption("input_type", &input_type,
+	  "{IMG, BIN}");
   options.AddDefaultOption("output_type", &output_type,
                            "{COLMAP, PMVS, CMP-MVS}");
   options.AddDefaultOption("blank_pixels",
@@ -767,11 +769,13 @@ int RunImageUndistorter(int argc, char** argv) {
   Reconstruction reconstruction;
   reconstruction.Read(input_path);
 
+  ImageType image_type = (input_type == "BIN" ? MULTI : RGB);
+
   std::unique_ptr<Thread> undistorter;
   if (output_type == "COLMAP") {
     undistorter.reset(new COLMAPUndistorter(undistort_camera_options,
                                             reconstruction, *options.image_path,
-                                            output_path));
+                                            output_path, image_type));
   } else if (output_type == "PMVS") {
     undistorter.reset(new PMVSUndistorter(undistort_camera_options,
                                           reconstruction, *options.image_path,
@@ -1906,7 +1910,6 @@ int ShowHelp(
 }
 
 int main(int argc, char** argv) {
-  std::cout <<"Good evening, Mr Kang!"<<std::endl;
   InitializeGlog(argv);
 
   std::vector<std::pair<std::string, command_func_t>> commands;

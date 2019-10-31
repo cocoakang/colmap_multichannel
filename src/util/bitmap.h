@@ -78,7 +78,7 @@ struct BitmapColor {
 class Bitmap {
  public:
   Bitmap();
-
+  //~Bitmap();
   // Copy constructor.
   Bitmap(const Bitmap& other);
   // Move constructor.
@@ -95,6 +95,7 @@ class Bitmap {
 
   // Allocate bitmap by overwriting the existing data.
   bool Allocate(const int width, const int height, const bool as_rgb);
+  bool Allocate(const int width, const int height, const ImageType image_type, const int depth_for_multi = 3);
 
   // Deallocate the bitmap by releasing the existing data.
   void Deallocate();
@@ -102,11 +103,14 @@ class Bitmap {
   // Get pointer to underlying FreeImage object.
   inline const FIBITMAP* Data() const;
   inline FIBITMAP* Data();
+  inline const float* BinData() const;
+  inline float* BinData();
 
   // Dimensions of bitmap.
   inline int Width() const;
   inline int Height() const;
   inline int Channels() const;
+  inline int Depth() const;
 
   // Number of bits per pixel. This is 8 for grey and 24 for RGB image.
   inline unsigned int BitsPerPixel() const;
@@ -125,16 +129,18 @@ class Bitmap {
   // Copy raw image data to array.
   std::vector<uint8_t> ConvertToRawBits() const;
   std::vector<uint8_t> ConvertToRowMajorArray() const;
-  std::vector<uint8_t> ConvertToDepthRowMajorArray() const;
+  std::vector<float> ConvertToDepthRowMajorArray(const ImageType image_type) const;
   std::vector<uint8_t> ConvertToColMajorArray() const;
 
   // Manipulate individual pixels. For grayscale images, only the red element
   // of the RGB color is used.
   bool GetPixel(const int x, const int y, BitmapColor<uint8_t>* color) const;
+  bool GetPixel(const int x, const int y, std::vector<float>& color) const;
   bool SetPixel(const int x, const int y, const BitmapColor<uint8_t>& color);
-
+  bool SetPixel(const int x, const int y, const std::vector<float>& color);
   // Get pointer to y-th scanline, where the 0-th scanline is at the top.
   const uint8_t* GetScanline(const int y) const;
+  const float* GetScanlineBin(const int y) const;
 
   // Fill entire bitmap with uniform color. For grayscale images, the first
   // element of the vector is used.
@@ -143,8 +149,12 @@ class Bitmap {
   // Interpolate color at given floating point position.
   bool InterpolateNearestNeighbor(const double x, const double y,
                                   BitmapColor<uint8_t>* color) const;
+  bool InterpolateNearestNeighbor(const double x, const double y,
+	  std::vector<float>& color) const;
   bool InterpolateBilinear(const double x, const double y,
                            BitmapColor<float>* color) const;
+  bool InterpolateBilinear(const double x, const double y,
+	  std::vector<float>& color) const;
 
   // Extract EXIF information from bitmap. Returns false if no EXIF information
   // is embedded in the bitmap.
@@ -155,6 +165,7 @@ class Bitmap {
 
   // Read bitmap at given path and convert to grey- or colorscale.
   bool Read(const std::string& path, const bool as_rgb = true);
+  bool Read(const std::string& path, const ImageType image_type);
 
   // Write image to file. Flags can be used to set e.g. the JPEG quality.
   // Consult the FreeImage documentation for all available flags.
@@ -162,12 +173,17 @@ class Bitmap {
              const FREE_IMAGE_FORMAT format = FIF_UNKNOWN,
              const int flags = 0) const;
 
+  bool Write(const std::string& path, const ImageType image_type,
+	  const FREE_IMAGE_FORMAT format = FIF_UNKNOWN,
+	  const int flags = 0) const;
+
   // Smooth the image using a Gaussian kernel.
   void Smooth(const float sigma_x, const float sigma_y);
 
   // Rescale image to the new dimensions.
   void Rescale(const int new_width, const int new_height,
                const FREE_IMAGE_FILTER filter = FILTER_BILINEAR);
+  void Rescale(const int new_width, const int new_height, const ImageType image_type);
 
   // Clone the image to a new bitmap object.
   Bitmap Clone() const;
@@ -176,6 +192,7 @@ class Bitmap {
 
   // Clone metadata from this bitmap object to another target bitmap object.
   void CloneMetadata(Bitmap* target) const;
+  void CloneMetadata(Bitmap* target, const ImageType image_type) const;
 
   // Read specific EXIF tag.
   bool ReadExifTag(const FREE_IMAGE_MDMODEL model, const std::string& tag_name,
@@ -191,8 +208,10 @@ class Bitmap {
   static bool IsPtrSupported(FIBITMAP* data);
 
   FIBitmapPtr data_;
+  float *bin_data_;
   int width_;
   int height_;
+  int depth_;
   int channels_;
 };
 
@@ -265,10 +284,13 @@ std::ostream& operator<<(std::ostream& output, const BitmapColor<T>& color) {
 
 FIBITMAP* Bitmap::Data() { return data_.get(); }
 const FIBITMAP* Bitmap::Data() const { return data_.get(); }
+float* Bitmap::BinData() { return bin_data_; }
+const float* Bitmap::BinData() const { return bin_data_; }
 
 int Bitmap::Width() const { return width_; }
 int Bitmap::Height() const { return height_; }
 int Bitmap::Channels() const { return channels_; }
+int Bitmap::Depth() const { return depth_; }
 
 unsigned int Bitmap::BitsPerPixel() const {
   return FreeImage_GetBPP(data_.get());

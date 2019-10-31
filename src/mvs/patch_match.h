@@ -57,6 +57,9 @@ class PatchMatchCuda;
 class Workspace;
 
 struct PatchMatchOptions {
+  //multi-channel (read binary) / single-channel (read png)
+  bool multi_channel = false;
+
   // Maximum image size in either dimension.
   int max_image_size = -1;
 

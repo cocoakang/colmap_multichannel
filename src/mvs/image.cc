@@ -52,10 +52,13 @@ Image::Image(const std::string& path, const size_t width, const size_t height,
 }
 
 void Image::SetBitmap(const Bitmap& bitmap) {
+	//std::cout << "in setbitmap: " << bitmap.Width() << ' ' << bitmap.Height() << ' ' << bitmap.Depth() << std::endl;
   bitmap_ = bitmap;
+  //std::cout << "in setbitmap: " << bitmap_.Width() << ' ' << bitmap_.Height() << ' ' << bitmap_.Depth() << std::endl;
   depth_ = bitmap_.Channels();
   CHECK_EQ(width_, bitmap_.Width());
   CHECK_EQ(height_, bitmap_.Height());
+  
 }
 
 void Image::Rescale(const float factor) { Rescale(factor, factor); }

@@ -556,6 +556,8 @@ void OptionManager::AddPatchMatchStereoOptions() {
   }
   added_patch_match_stereo_options_ = true;
 
+  AddAndRegisterDefaultOption("PatchMatchStereo.multi_channel",
+	  &patch_match_stereo->multi_channel);
   AddAndRegisterDefaultOption("PatchMatchStereo.max_image_size",
                               &patch_match_stereo->max_image_size);
   AddAndRegisterDefaultOption("PatchMatchStereo.gpu_index",

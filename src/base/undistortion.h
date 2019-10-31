@@ -68,7 +68,8 @@ class COLMAPUndistorter : public Thread {
   COLMAPUndistorter(const UndistortCameraOptions& options,
                     const Reconstruction& reconstruction,
                     const std::string& image_path,
-                    const std::string& output_path);
+                    const std::string& output_path,
+					const ImageType image_type);
 
  private:
   void Run();
@@ -81,6 +82,7 @@ class COLMAPUndistorter : public Thread {
   UndistortCameraOptions options_;
   std::string image_path_;
   std::string output_path_;
+  ImageType image_type_;
   const Reconstruction& reconstruction_;
 };
 
@@ -175,7 +177,7 @@ Camera UndistortCamera(const UndistortCameraOptions& options,
 void UndistortImage(const UndistortCameraOptions& options,
                     const Bitmap& distorted_image,
                     const Camera& distorted_camera, Bitmap* undistorted_image,
-                    Camera* undistorted_camera);
+                    Camera* undistorted_camera, const ImageType image_type);
 
 // Undistort all cameras in the reconstruction and accordingly all
 // observations in their corresponding images.

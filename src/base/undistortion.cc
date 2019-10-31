@@ -151,13 +151,16 @@ void WriteCOLMAPCommands(const bool geometric,
 COLMAPUndistorter::COLMAPUndistorter(const UndistortCameraOptions& options,
                                      const Reconstruction& reconstruction,
                                      const std::string& image_path,
-                                     const std::string& output_path)
+                                     const std::string& output_path,
+									 const ImageType image_type)
     : options_(options),
       image_path_(image_path),
       output_path_(output_path),
-      reconstruction_(reconstruction) {}
+      reconstruction_(reconstruction),
+	  image_type_(image_type){}
 
 void COLMAPUndistorter::Run() {
+	std::cout << "[TO KKZ]Image type is:"<<image_type_ << ' ' << MULTI << ' ' << RGB << ' ' << GREY << std::endl;
   PrintHeading1("Image undistortion");
 
   CreateDirIfNotExists(JoinPaths(output_path_, "images"));
@@ -179,8 +182,9 @@ void COLMAPUndistorter::Run() {
   for (size_t i = 0; i < reconstruction_.NumRegImages(); ++i) {
     futures.push_back(
         thread_pool.AddTask(&COLMAPUndistorter::Undistort, this, i));
+	  //Undistort(i);
   }
-
+  //exit(0);
   for (size_t i = 0; i < futures.size(); ++i) {
     if (IsStopped()) {
       break;
@@ -218,19 +222,19 @@ void COLMAPUndistorter::Undistort(const size_t reg_image_idx) const {
       JoinPaths(output_path_, "images", image.Name());
 
   Bitmap distorted_bitmap;
-  const std::string input_image_path = JoinPaths(image_path_, image.Name());
-  if (!distorted_bitmap.Read(input_image_path)) {
+  const std::string input_image_path = JoinPaths(image_path_, image.Name() + (image_type_ == MULTI ? ".bin" : ""));
+  if (!distorted_bitmap.Read(input_image_path, image_type_)) {
     std::cerr << "ERROR: Cannot read image at path " << input_image_path
               << std::endl;
     return;
   }
-
+  //distorted_bitmap.Write(output_image_path, image_type_);
   Bitmap undistorted_bitmap;
   Camera undistorted_camera;
   UndistortImage(options_, distorted_bitmap, camera, &undistorted_bitmap,
-                 &undistorted_camera);
+                 &undistorted_camera, image_type_);
 
-  undistorted_bitmap.Write(output_image_path);
+  undistorted_bitmap.Write(output_image_path, image_type_);
 }
 
 void COLMAPUndistorter::WritePatchMatchConfig() const {
@@ -354,7 +358,7 @@ void PMVSUndistorter::Undistort(const size_t reg_image_idx) const {
   Bitmap undistorted_bitmap;
   Camera undistorted_camera;
   UndistortImage(options_, distorted_bitmap, camera, &undistorted_bitmap,
-                 &undistorted_camera);
+                 &undistorted_camera, RGB);
 
   undistorted_bitmap.Write(output_image_path);
   WriteProjectionMatrix(proj_matrix_path, undistorted_camera, image, "CONTOUR");
@@ -554,7 +558,7 @@ void CMPMVSUndistorter::Undistort(const size_t reg_image_idx) const {
   Bitmap undistorted_bitmap;
   Camera undistorted_camera;
   UndistortImage(options_, distorted_bitmap, camera, &undistorted_bitmap,
-                 &undistorted_camera);
+                 &undistorted_camera, RGB);
 
   undistorted_bitmap.Write(output_image_path);
   WriteProjectionMatrix(proj_matrix_path, undistorted_camera, image, "CONTOUR");
@@ -724,6 +728,8 @@ Camera UndistortCamera(const UndistortCameraOptions& options,
     undistorted_camera.SetPrincipalPointY(camera.PrincipalPointY() -
                                           static_cast<double>(roi_min_y));
   }
+  //std::cout << "rois = " << roi_min_x << ' ' << roi_min_y << ' ' << roi_max_x << ' ' << roi_max_y << std::endl;
+  //std::cout << "option rois = " << options.roi_min_x << ' ' << options.roi_min_y << ' ' << options.roi_max_x << ' ' << options.roi_max_y << std::endl;
 
   // Scale the image such the the boundary of the undistorted image.
   if (roi_enabled || (camera.ModelId() != SimplePinholeCameraModel::model_id &&
@@ -837,25 +843,42 @@ Camera UndistortCamera(const UndistortCameraOptions& options,
       undistorted_camera.Rescale(max_image_scale);
     }
   }
-
+  //std::cout << "camera = " << undistorted_camera.Width() << ' ' << undistorted_camera.Height() << std::endl;
   return undistorted_camera;
 }
 
 void UndistortImage(const UndistortCameraOptions& options,
                     const Bitmap& distorted_bitmap,
                     const Camera& distorted_camera, Bitmap* undistorted_bitmap,
-                    Camera* undistorted_camera) {
+                    Camera* undistorted_camera, const ImageType image_type) {
   CHECK_EQ(distorted_camera.Width(), distorted_bitmap.Width());
   CHECK_EQ(distorted_camera.Height(), distorted_bitmap.Height());
 
   *undistorted_camera = UndistortCamera(options, distorted_camera);
-  undistorted_bitmap->Allocate(static_cast<int>(undistorted_camera->Width()),
-                               static_cast<int>(undistorted_camera->Height()),
-                               distorted_bitmap.IsRGB());
-  distorted_bitmap.CloneMetadata(undistorted_bitmap);
 
-  WarpImageBetweenCameras(distorted_camera, *undistorted_camera,
-                          distorted_bitmap, undistorted_bitmap);
+  //if (image_type != MULTI)
+  //{
+	  //undistorted_bitmap->Allocate(static_cast<int>(undistorted_camera->Width()),
+		 // static_cast<int>(undistorted_camera->Height()),
+		 // distorted_bitmap.IsRGB());
+
+	  //distorted_bitmap.CloneMetadata(undistorted_bitmap);
+
+	  WarpImageBetweenCameras(distorted_camera, *undistorted_camera,
+		  distorted_bitmap, undistorted_bitmap, image_type);
+
+  //}
+  //else
+  //{
+	 // undistorted_bitmap->Allocate(static_cast<int>(undistorted_camera->Width()),
+		//  static_cast<int>(undistorted_camera->Height()),image_type, distorted_bitmap.Depth());
+
+	 // distorted_bitmap.CloneMetadata(undistorted_bitmap, image_type);
+
+	 // WarpImageBetweenCameras(distorted_camera, *undistorted_camera,
+		//  distorted_bitmap, undistorted_bitmap);
+
+  //}
 }
 
 void UndistortReconstruction(const UndistortCameraOptions& options,

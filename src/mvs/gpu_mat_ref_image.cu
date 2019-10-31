@@ -34,15 +34,15 @@
 #include <iostream>
 
 #include "util/cudacc.h"
-#define TMP_DEPTH 3
+//#define TMP_DEPTH 1
 #define MAX_DEPTH 70
 namespace colmap {
 	namespace mvs {
 		namespace {
 
-			texture<uint8_t, cudaTextureType2DLayered, cudaReadModeNormalizedFloat> image_texture;
+			texture<float, cudaTextureType2DLayered, cudaReadModeElementType> image_texture;
 
-			__global__ void FilterKernel(GpuMat<uint8_t> image, GpuMat<float> sum_image,
+			__global__ void FilterKernel(GpuMat<float> image, GpuMat<float> sum_image,
 				GpuMat<float> squared_sum_image,
 				const int window_radius, const int window_step,
 				const float sigma_spatial,
@@ -74,7 +74,7 @@ namespace colmap {
 
 				float color_sum[MAX_DEPTH];
 				float color_squared_sum[MAX_DEPTH];
-				for (int i = 0; i < TMP_DEPTH; ++i)
+				for (int i = 0; i < data_depth; ++i)
 				{
 					color_sum[i] = 0;
 					color_squared_sum[i] = 0;
@@ -93,17 +93,17 @@ namespace colmap {
 
 						//NEW
 						float color[MAX_DEPTH];
-						for (int i = 0; i < TMP_DEPTH; ++i)
+						for (int i = 0; i < data_depth; ++i)
 							color[i] = tex2DLayered(image_texture, col + window_col, row + window_row, i);
 
 						const float bilateral_weight = bilateral_weight_computer.Compute(
-							window_row, window_col, center_color, color, TMP_DEPTH); //NEW
+							window_row, window_col, center_color, color, data_depth); //NEW
 
 						//color_sum += bilateral_weight * color;
 						//color_squared_sum += bilateral_weight * color * color;
 						bilateral_weight_sum += bilateral_weight;
 						//NEW
-						for (int i = 0; i < TMP_DEPTH; ++i)
+						for (int i = 0; i < data_depth; ++i)
 						{
 							color_sum[i] += bilateral_weight * color[i];
 							color_squared_sum[i] += bilateral_weight * color[i] * color[i];
@@ -114,7 +114,7 @@ namespace colmap {
 				//color_sum /= bilateral_weight_sum;
 				//color_squared_sum /= bilateral_weight_sum;
 				//NEW
-				for (int i = 0; i < TMP_DEPTH; ++i)
+				for (int i = 0; i < data_depth; ++i)
 				{
 					color_sum[i] /= bilateral_weight_sum;
 					color_squared_sum[i] /= bilateral_weight_sum;
@@ -127,7 +127,7 @@ namespace colmap {
 				//NEW
 				for (int i = 0; i < data_depth; ++i)
 				{
-					image.Set(row, col, i, static_cast<uint8_t>(255.0f * tex2DLayered(image_texture, col, row, i)));
+					image.Set(row, col, i, tex2DLayered(image_texture, col, row, i));
 					sum_image.Set(row, col, i, color_sum[i]);
 					squared_sum_image.Set(row, col, i, color_squared_sum[i]);
 				}
@@ -137,16 +137,16 @@ namespace colmap {
 
 		GpuMatRefImage::GpuMatRefImage(const size_t width, const size_t height, const size_t depth)
 			: height_(height), width_(width), depth_(depth) {
-			image.reset(new GpuMat<uint8_t>(width, height, depth));
+			image.reset(new GpuMat<float>(width, height, depth));
 			sum_image.reset(new GpuMat<float>(width, height, depth)); //NEW
 			squared_sum_image.reset(new GpuMat<float>(width, height, depth));//NEW
 		}
 
-		void GpuMatRefImage::Filter(const uint8_t* image_data,
+		void GpuMatRefImage::Filter(const float* image_data,
 			const size_t window_radius,
 			const size_t window_step, const float sigma_spatial,
 			const float sigma_color) {
-			CudaArrayWrapper<uint8_t> image_array(width_, height_, depth_);
+			CudaArrayWrapper<float> image_array(width_, height_, depth_);
 			image_array.CopyToDevice(image_data);
 			image_texture.addressMode[0] = cudaAddressModeBorder;  //out of address return 0
 			image_texture.addressMode[1] = cudaAddressModeBorder;

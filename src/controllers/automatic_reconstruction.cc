@@ -265,7 +265,7 @@ void AutomaticReconstructionController::RunDenseMapper() {
           option_manager_.patch_match_stereo->max_image_size;
       COLMAPUndistorter undistorter(undistortion_options,
                                     reconstruction_manager_->Get(i),
-                                    *option_manager_.image_path, dense_path);
+                                    *option_manager_.image_path, dense_path, RGB);
       active_thread_ = &undistorter;
       undistorter.Start();
       undistorter.Wait();

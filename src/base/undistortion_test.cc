@@ -115,7 +115,7 @@ BOOST_AUTO_TEST_CASE(TestUndistortCameraBlankPixels) {
   Bitmap undistorted_image;
   Camera undistorted_camera;
   UndistortImage(options, distorted_image, distorted_camera, &undistorted_image,
-                 &undistorted_camera);
+                 &undistorted_camera, RGB);
 
   BOOST_CHECK_EQUAL(undistorted_camera.ModelName(), "PINHOLE");
   BOOST_CHECK_EQUAL(undistorted_camera.FocalLengthX(), 100);
@@ -155,7 +155,7 @@ BOOST_AUTO_TEST_CASE(TestUndistortCameraNoBlankPixels) {
   Bitmap undistorted_image;
   Camera undistorted_camera;
   UndistortImage(options, distorted_image, distorted_camera, &undistorted_image,
-                 &undistorted_camera);
+                 &undistorted_camera, RGB);
 
   BOOST_CHECK_EQUAL(undistorted_camera.ModelName(), "PINHOLE");
   BOOST_CHECK_EQUAL(undistorted_camera.FocalLengthX(), 100);

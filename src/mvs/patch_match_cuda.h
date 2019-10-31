@@ -90,14 +90,14 @@ class PatchMatchCuda {
   // Original (not rotated) dimension of reference image.
   size_t ref_width_;
   size_t ref_height_;
-  size_t ref_depth_;
+  size_t ref_depth_;//added by x
 
   // Rotation of reference image in pi/2. This is equivalent to the number of
   // calls to `rotate` mod 4.
   int rotation_in_half_pi_;
 
-  std::unique_ptr<CudaArrayWrapper<uint8_t>> ref_image_device_;
-  std::unique_ptr<CudaArrayWrapper<uint8_t>> src_images_device_;
+  std::unique_ptr<CudaArrayWrapper<float>> ref_image_device_;//changed by x origin: std::unique_ptr<CudaArrayWrapper<uint8_t>> ref_image_device_;
+  std::unique_ptr<CudaArrayWrapper<float>> src_images_device_;//changed by x origin: std::unique_ptr<CudaArrayWrapper<uint8_t>> src_images_device_;
   std::unique_ptr<CudaArrayWrapper<float>> src_depth_maps_device_;
 
   // Relative poses from rotated versions of reference image to source images

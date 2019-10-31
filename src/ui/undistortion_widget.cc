@@ -87,7 +87,7 @@ void UndistortionWidget::Undistort() {
     if (output_format_->currentIndex() == 0) {
       undistorter =
           new COLMAPUndistorter(undistortion_options_, *reconstruction_,
-                                *options_->image_path, output_path_);
+                                *options_->image_path, output_path_, RGB);
     } else if (output_format_->currentIndex() == 1) {
       undistorter = new PMVSUndistorter(undistortion_options_, *reconstruction_,
                                         *options_->image_path, output_path_);

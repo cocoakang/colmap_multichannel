@@ -180,7 +180,7 @@ Eigen::Matrix3d EstimateManhattanWorldFrame(
     Bitmap undistorted_bitmap;
     Camera undistorted_camera;
     UndistortImage(undistortion_options, bitmap, camera, &undistorted_bitmap,
-                   &undistorted_camera);
+                   &undistorted_camera, RGB);
 
     std::cout << "Detecting lines...";
 

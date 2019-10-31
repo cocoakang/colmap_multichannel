@@ -87,14 +87,21 @@ const Bitmap& Workspace::GetBitmap(const int image_idx) {
   auto& cached_image = cache_.GetMutable(image_idx);
   if (!cached_image.bitmap) {
     cached_image.bitmap.reset(new Bitmap());
-    cached_image.bitmap->Read(GetBitmapPath(image_idx), options_.image_as_rgb);
-    if (options_.max_image_size > 0) {
+	//cached_image.bitmap->Read(GetBitmapPath(image_idx), options_.image_as_rgb);//CHANGED
+	std::cout<<"[TO KKZ] reading in:" << GetBitmapPath(image_idx) + (options_.image_type == MULTI ? ".bin" : "") << std::endl;
+	cached_image.bitmap->Read(GetBitmapPath(image_idx) + (options_.image_type == MULTI ? ".bin" : ""), options_.image_type);
+	//std::cout << cached_image.bitmap->Width() << ' ' << cached_image.bitmap->Height() << ' ' << cached_image.bitmap->Depth() << ' ' << cached_image.bitmap->Channels() << std::endl;
+	//cached_image.bitmap->Write(std::string("F:/images3/") + std::to_string(image_idx) + ".png", MULTI);
+	if (options_.max_image_size > 0) {
       cached_image.bitmap->Rescale(model_.images.at(image_idx).GetWidth(),
-                                   model_.images.at(image_idx).GetHeight());
+                                   model_.images.at(image_idx).GetHeight(), options_.image_type);
     }
+	//std::cout << cached_image.bitmap->Width() << ' ' << cached_image.bitmap->Height() << ' ' << cached_image.bitmap->Depth() << ' ' << cached_image.bitmap->Channels() << std::endl;
+
     cached_image.num_bytes += cached_image.bitmap->NumBytes();
     cache_.UpdateNumBytes(image_idx);
   }
+  //cached_image.bitmap->Write(std::string("F:/images2/") + std::to_string(image_idx) + ".png", MULTI);
   return *cached_image.bitmap;
 }
 

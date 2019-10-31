@@ -47,12 +47,12 @@ namespace colmap {
 			// Filter image using sum convolution kernel to compute local sum of
 			// intensities. The filtered images can then be used for repeated, efficient
 			// NCC computation.
-			void Filter(const uint8_t* image_data, const size_t window_radius,
+			void Filter(const float* image_data, const size_t window_radius,
 				const size_t window_step, const float sigma_spatial,
 				const float sigma_color);
 
 			// Image intensities.
-			std::unique_ptr<GpuMat<uint8_t>> image;
+			std::unique_ptr<GpuMat<float>> image;
 
 			// Local sum of image intensities.
 			std::unique_ptr<GpuMat<float>> sum_image;

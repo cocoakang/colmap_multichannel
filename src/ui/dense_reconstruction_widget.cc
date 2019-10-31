@@ -324,7 +324,7 @@ void DenseReconstructionWidget::Undistort() {
 
   COLMAPUndistorter* undistorter =
       new COLMAPUndistorter(UndistortCameraOptions(), *reconstruction_,
-                            *options_->image_path, workspace_path);
+                            *options_->image_path, workspace_path, RGB);
   undistorter->AddCallback(Thread::FINISHED_CALLBACK,
                            [this]() { refresh_workspace_action_->trigger(); });
   thread_control_widget_->StartThread("Undistorting...", true, undistorter);
