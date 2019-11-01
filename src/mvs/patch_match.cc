@@ -168,7 +168,7 @@ void PatchMatch::Run() {
   Check();
 
   patch_match_cuda_.reset(new PatchMatchCuda(options_, problem_));
-  //patch_match_cuda_->Run();
+  patch_match_cuda_->Run();
 }
 
 DepthMap PatchMatch::GetDepthMap() const {
@@ -210,7 +210,7 @@ void PatchMatchController::Run() {
   // If geometric consistency is enabled, then photometric output must be
   // computed first for all images without filtering.
   if (options_.geom_consistency) {
-    std::cout <<"[TO KKZ] You set geom_consistency as required, so I have to process photometric first(without filer!!)"<<std::endl;
+    //std::cout <<"[TO KKZ] You set geom_consistency as required, so I have to process photometric first(without filer!!)"<<std::endl;
     auto photometric_options = options_;
     photometric_options.geom_consistency = false;
     photometric_options.filter = false;

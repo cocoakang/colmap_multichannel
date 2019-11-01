@@ -47,7 +47,7 @@
 // since the templated window sizes rely on this value.
 #define THREADS_PER_BLOCK 5
 
-#define TMP_DEPTH 64//added by x
+#define TMP_DEPTH 4//added by x
 #define MAX_DEPTH 70//added by x
 #define ROW_STRIPE 50//added by x
 // We must not include "util/math.h" to avoid any Eigen includes here,
@@ -380,7 +380,7 @@ struct PhotoConsistencyCostComputer {
 
     int ref_image_idx = THREADS_PER_BLOCK - kWindowRadius + thread_id;
     int ref_image_base_idx = ref_image_idx;
-
+/////////////////////////////////////////////////////////////K SAFE
     //const float ref_center_color =
     //    local_ref_image[0 + (ref_image_idx + kWindowRadius * 3 * THREADS_PER_BLOCK +
     //                    kWindowRadius) * maxDepth]; //CHANGED
@@ -429,54 +429,29 @@ struct PhotoConsistencyCostComputer {
         float norm_col_src = inv_z * col_src + 0.5f;
         float norm_row_src = inv_z * row_src + 0.5f;
 
-        //const float ref_color = local_ref_image[0 + ref_image_idx * maxDepth];
-		//const float src_color = tex2DLayered(src_images_multi_texture, norm_col_src, norm_row_src, src_image_idx * TMP_DEPTH + 0);
-		//const float src_color0 = tex2DLayered(src_images_multi_texture, norm_col_src, norm_row_src, src_image_idx * TMP_DEPTH + 0);
-		//const float src_color1 = tex2DLayered(src_images_multi_texture, norm_col_src, norm_row_src, src_image_idx * TMP_DEPTH + 1);
-		//const float src_color2 = tex2DLayered(src_images_multi_texture, norm_col_src, norm_row_src, src_image_idx * TMP_DEPTH + 2);
+
+    		const float *ref_color = local_ref_image + (0 + ref_image_idx * maxDepth);
 
 
-		//float ref_color_aver = 0;
-		//for (int i = 0; i < TMP_DEPTH; ++i)
-		//	ref_color_aver += local_ref_image[i + ref_image_idx * maxDepth];
-		//ref_color_aver /= TMP_DEPTH;
-
-		const float *ref_color = local_ref_image + (0 + ref_image_idx * maxDepth);
-
-
-		//NEW
-		float src_color[MAX_DEPTH];
-		for (int i = 0; i < TMP_DEPTH; ++i)
-		{
-			src_color[i] = tex2DLayered(src_images_multi_texture, norm_col_src, norm_row_src, src_image_idx * TMP_DEPTH + i);
-		}
-
-		//float src_color = 0;
-		//for (int i = 0; i < data_depth; ++i)
-		//	src_color +=  (float)tex2DLayered(src_images_multi_texture, norm_col_src,
-		//		                          norm_row_src, int(src_image_idx * 24 + i));
-		//src_color /= float(data_depth);
-
-
-
+        //NEW
+        float src_color[MAX_DEPTH];
+        for (int i = 0; i < TMP_DEPTH; ++i)
+        {
+          src_color[i] = tex2DLayered(src_images_multi_texture, norm_col_src, norm_row_src, src_image_idx * TMP_DEPTH + i);
+        }
 
         float bilateral_weight = bilateral_weight_computer_.Compute(
             row, col, ref_center_color, ref_color, TMP_DEPTH);
 
-        //float bilateral_weight_src = bilateral_weight * src_color;
-
-        //src_color_sum += bilateral_weight_src;
-        //src_color_squared_sum += bilateral_weight_src * src_color;
-        //src_ref_color_sum += bilateral_weight_src * ref_color_aver;
         bilateral_weight_sum += bilateral_weight;
 
-		//NEW
-		for (int i = 0; i < TMP_DEPTH; ++i)
-		{
-			src_color_sum[i] += bilateral_weight * src_color[i];
-			src_color_squared_sum[i] += bilateral_weight * src_color[i] * src_color[i];
-			src_ref_color_sum[i] += bilateral_weight * src_color[i] * ref_color[i];
-		}
+        //NEW
+        for (int i = 0; i < TMP_DEPTH; ++i)
+        {
+          src_color_sum[i] += bilateral_weight * src_color[i];
+          src_color_squared_sum[i] += bilateral_weight * src_color[i] * src_color[i];
+          src_ref_color_sum[i] += bilateral_weight * src_color[i] * ref_color[i];
+        }
 
         ref_image_idx += kWindowStep;
 
@@ -529,8 +504,8 @@ struct PhotoConsistencyCostComputer {
 		ref_color_var_aver += ref_color_var[i];
 		src_color_var_aver += src_color_var[i];
 	}
-	ref_color_var_aver /= TMP_DEPTH;
-	src_color_var_aver /= TMP_DEPTH;
+	// ref_color_var_aver /= TMP_DEPTH;
+	// src_color_var_aver /= TMP_DEPTH;
 
 
     // Based on Jensen's Inequality for convex functions, the variance
@@ -540,8 +515,13 @@ struct PhotoConsistencyCostComputer {
       return kMaxCost;
     } else {
       //const float src_ref_color_covar =
-      //    src_ref_color_sum - ref_color_sum * src_color_sum;
+        //  src_ref_color_sum - ref_color_sum * src_color_sum;
+      float src_ref_color_covar = 0;
+      for(int i = 0; i < TMP_DEPTH; ++i){
+        src_ref_color_covar+=(src_ref_color_sum[i] - ref_color_sum[i] * src_color_sum[i]);
+      }
       //const float src_ref_color_var = sqrt(ref_color_var * src_color_var);
+      const float src_ref_color_var = sqrt(ref_color_var_aver * src_color_var_aver);
 	  //NEW
 		//float src_ref_color_covar = 0;
 		//float src_ref_color_var = 0;
@@ -553,14 +533,18 @@ struct PhotoConsistencyCostComputer {
 		//src_ref_color_covar /= TMP_DEPTH;
 		//src_ref_color_var /= TMP_DEPTH;
 
-		float ratio = 0.0;
-		for (int i = 0; i < TMP_DEPTH; ++i)
-		{
-			ratio += (src_ref_color_sum[i] - ref_color_sum[i] * src_color_sum[i]) / sqrt(ref_color_var[i] * src_color_var[i]);
-		}
-		ratio /= TMP_DEPTH;
+		// float ratio = 0.0;
+		// for (int i = 0; i < TMP_DEPTH; ++i)
+		// {
+		// 	ratio += (src_ref_color_sum[i] - ref_color_sum[i] * src_color_sum[i]) / sqrt(ref_color_var[i] * src_color_var[i]);
+		// }
+    // ratio /= TMP_DEPTH;
+    //float tmp = 1.0f - src_ref_color_covar / src_ref_color_var;
+    // assert(tmp >= -1e-3 && tmp < 2.0+1e-3);
+    //printf("[TO KKZ] ncc:%0.3f\n", tmp);
+    // assert(tmp >= 100.0 && tmp < 2.0+1e-3);
       return max(0.0f,
-                 min(kMaxCost, 1.0f - /*src_ref_color_covar / src_ref_color_var*/ratio));
+                 min(kMaxCost, 1.0f - src_ref_color_covar / src_ref_color_var/*ratio*/));
     }
   }
 
@@ -666,9 +650,9 @@ __device__ inline void ReadRefImageIntoSharedMemory(float* local_image,
       int c = col - THREADS_PER_BLOCK;
 #pragma unroll
       for (int j = 0; j < 3; ++j) { //CHANGED
-		  for (int k = 0; k < data_depth; ++k)
-			  local_image[k + (thread_id + i * 3 * THREADS_PER_BLOCK + //CHANGED
-				  j * THREADS_PER_BLOCK) * maxDepth] = tex2DLayered(ref_image_multi_texture, c, r, k);// tex2D(ref_image_texture, c, r);
+        for (int k = 0; k < data_depth; ++k)
+          local_image[k + (thread_id + i * 3 * THREADS_PER_BLOCK + //CHANGED
+            j * THREADS_PER_BLOCK) * maxDepth] = tex2DLayered(ref_image_multi_texture, c, r, k);// tex2D(ref_image_texture, c, r);
 		  c += THREADS_PER_BLOCK;
       }
       r += 1;
@@ -1443,12 +1427,12 @@ void PatchMatchCuda::RunWithWindowSizeAndStep() {
   std::cout << "\tComputeInitialCost()" << std::endl;
   //std::cout << "current depth = " << ref_depth_ << std::endl;
   //std::cout << "cost_map depth = " << cost_map_->GetDepth() << std::endl;
-  std::cout << "\t";
+  //std::cout << "\t";
   for (size_t row = 0; row < cost_map_->GetHeight(); row += ROW_STRIPE)
   {
 	  int start = row;
 	  int end = min(row + ROW_STRIPE, cost_map_->GetHeight());
-	  std::cout << row << ' ';
+	  //std::cout << row << ' ';
 	  ComputeInitialCost<kWindowSize, kWindowStep, maxDepth>
 		  << <sweep_grid_size_, sweep_block_size_ >> >(
 			  *cost_map_, *depth_map_, *normal_map_, *ref_image_->sum_image,
@@ -1456,7 +1440,7 @@ void PatchMatchCuda::RunWithWindowSizeAndStep() {
 			  options_.sigma_color * ref_depth_, ref_depth_, start, end);//KKZ DOUBT options_.sigma_color * ref_depth_ ->options_.sigma_color
 	  CUDA_SYNC_AND_CHECK();
   }
-  std::cout << cost_map_->GetHeight() << std::endl;
+  //std::cout << cost_map_->GetHeight() << std::endl;
   std::cout << "\t~ComputeInitialCost()" << std::endl;
   init_timer.Print("Initialization");
 
@@ -1550,99 +1534,99 @@ void PatchMatchCuda::RunWithWindowSizeAndStep() {
           if (options_.filter) {
             const bool kFilterPhotoConsistency = true;
             const bool kFilterGeomConsistency = true;
-			std::cout << "\tinit ";
+			//std::cout << "\tinit ";
 			for (int row = cost_map_->GetHeight(); row > 0; row -= ROW_STRIPE)
 			{
 				int start = max((int)row - ROW_STRIPE, 0);
 				int end = row;
-				std::cout << end << ' ';
+				//std::cout << end << ' ';
 				CALL_INIT_LIKELIHOOD(start, end);
 				CUDA_SYNC_AND_CHECK();
 			}
-			std::cout << "0" << std::endl;
-			std::cout << "\tsweep ";
+			//std::cout << "0" << std::endl;
+			//std::cout << "\tsweep ";
 			for (size_t row = 0; row < cost_map_->GetHeight(); row += ROW_STRIPE)
 			{
 				int start = row;
 				int end = min(row + ROW_STRIPE, cost_map_->GetHeight());
-				std::cout <<  start << ' ';
+				//std::cout <<  start << ' ';
 				CALL_SWEEP_FUNC(start, end);
 				CUDA_SYNC_AND_CHECK();
 			}
-			std::cout << cost_map_->GetHeight() << std::endl;
+			//std::cout << cost_map_->GetHeight() << std::endl;
 				
           } else {
             const bool kFilterPhotoConsistency = false;
             const bool kFilterGeomConsistency = false;
-			std::cout << "\tinit ";
+			//std::cout << "\tinit ";
 			for (int row = cost_map_->GetHeight(); row > 0; row -= ROW_STRIPE)
 			{
 				int start = max((int)row - ROW_STRIPE, 0);
 				int end = row;
-				std::cout << end << ' ';
+				//std::cout << end << ' ';
 				CALL_INIT_LIKELIHOOD(start, end);
 				CUDA_SYNC_AND_CHECK();
 			}
-			std::cout << "0" << std::endl;
-			std::cout << "\tsweep ";
+			//std::cout << "0" << std::endl;
+			//std::cout << "\tsweep ";
 			for (size_t row = 0; row < cost_map_->GetHeight(); row += ROW_STRIPE)
 			{
 				int start = row;
 				int end = min(row + ROW_STRIPE, cost_map_->GetHeight());
-				std::cout << start << ' ';
+				//std::cout << start << ' ';
 				CALL_SWEEP_FUNC(start, end);
 				CUDA_SYNC_AND_CHECK();
 			}
-			std::cout << cost_map_->GetHeight() << std::endl;
+			//std::cout << cost_map_->GetHeight() << std::endl;
 		  }
         } else {
           const bool kGeomConsistencyTerm = false;
           if (options_.filter) {
             const bool kFilterPhotoConsistency = true;
             const bool kFilterGeomConsistency = false;
-			std::cout << "\tinit ";
+			//std::cout << "\tinit ";
 			for (int row = cost_map_->GetHeight(); row > 0; row -= ROW_STRIPE)
 			{
 				int start = max((int)row - ROW_STRIPE, 0);
 				int end = row;
-				std::cout << end << ' ';
+				//std::cout << end << ' ';
 				CALL_INIT_LIKELIHOOD(start, end);
 				CUDA_SYNC_AND_CHECK();
 			}
-			std::cout << "0" << std::endl;
-			std::cout << "\tsweep ";
+			//std::cout << "0" << std::endl;
+			//std::cout << "\tsweep ";
 			for (size_t row = 0; row < cost_map_->GetHeight(); row += ROW_STRIPE)
 			{
 				int start = row;
 				int end = min(row + ROW_STRIPE, cost_map_->GetHeight());
-				std::cout << start << ' ';
+				//std::cout << start << ' ';
 				CALL_SWEEP_FUNC(start, end);
 				CUDA_SYNC_AND_CHECK();
 			}
-			std::cout << cost_map_->GetHeight() << std::endl;
+			//std::cout << cost_map_->GetHeight() << std::endl;
 		  } else {
             const bool kFilterPhotoConsistency = false;
             const bool kFilterGeomConsistency = false;
-			std::cout << "\tinit ";
+			//std::cout << "\tinit ";
 			for (int row = cost_map_->GetHeight(); row > 0; row -= ROW_STRIPE)
 			{
 				int start = max((int)row - ROW_STRIPE, 0);
 				int end = row;
-				std::cout << end << ' ';
+				//std::cout << end << ' ';
 				CALL_INIT_LIKELIHOOD(start, end);
 				CUDA_SYNC_AND_CHECK();
 			}
-			std::cout << "0" << std::endl;
-			std::cout << "\tsweep ";
+			//std::cout << "0" << std::endl;
+			//std::cout << "\tsweep ";
 			for (size_t row = 0; row < cost_map_->GetHeight(); row += ROW_STRIPE)
 			{
 				int start = row;
 				int end = min(row + ROW_STRIPE, cost_map_->GetHeight());
-				std::cout << start << ' ';
+				//std::cout << start << ' ';
 				CALL_SWEEP_FUNC(start, end);
 				CUDA_SYNC_AND_CHECK();
 			}
-			std::cout << cost_map_->GetHeight() << std::endl;
+			//std::cout << cost_map_->GetHeight() << std::endl;
 		  }
         }
       } else {
@@ -1650,48 +1634,48 @@ void PatchMatchCuda::RunWithWindowSizeAndStep() {
         const bool kFilterGeomConsistency = false;
         if (options_.geom_consistency) {
           const bool kGeomConsistencyTerm = true;
-		  std::cout << "\tinit ";
+		  //std::cout << "\tinit ";
 		  for (int row = cost_map_->GetHeight(); row > 0; row -= ROW_STRIPE)
 		  {
 			  int start = max((int)row - ROW_STRIPE, 0);
 			  int end = row;
-			  std::cout << end << ' ';
+			  //std::cout << end << ' ';
 			  CALL_INIT_LIKELIHOOD(start, end);
 			  CUDA_SYNC_AND_CHECK();
 		  }
-		  std::cout << "0" << std::endl;
-		  std::cout << "\tsweep";
+		  //std::cout << "0" << std::endl;
+		  //std::cout << "\tsweep";
 		  for (size_t row = 0; row < cost_map_->GetHeight(); row += ROW_STRIPE)
 		  {
 			  int start = row;
 			  int end = min(row + ROW_STRIPE, cost_map_->GetHeight());
-			  std::cout << start << ' ';
+			  //std::cout << start << ' ';
 			  CALL_SWEEP_FUNC(start, end);
 			  CUDA_SYNC_AND_CHECK();
 		  }
-		  std::cout << cost_map_->GetHeight() << std::endl;
+		  //std::cout << cost_map_->GetHeight() << std::endl;
 		} else {
           const bool kGeomConsistencyTerm = false;
-		  std::cout << "\tinit ";
+		  //std::cout << "\tinit ";
 		  for (int row = cost_map_->GetHeight(); row > 0; row -= ROW_STRIPE)
 		  {
 			  int start = max((int)row - ROW_STRIPE, 0);
 			  int end = row;
-			  std::cout << end << ' ';
+			  //std::cout << end << ' ';
 			  CALL_INIT_LIKELIHOOD(start, end);
 			  CUDA_SYNC_AND_CHECK();
 		  }
-		  std::cout << "0" << std::endl;
-		  std::cout << "\tsweep ";
+		  //std::cout << "0" << std::endl;
+		  //std::cout << "\tsweep ";
 		  for (size_t row = 0; row < cost_map_->GetHeight(); row += ROW_STRIPE)
 		  {
 			  int start = row;
 			  int end = min(row + ROW_STRIPE, cost_map_->GetHeight());
-			  std::cout << start << ' ';
+			  //std::cout << start << ' ';
 			  CALL_SWEEP_FUNC(start, end);
 			  CUDA_SYNC_AND_CHECK();
 		  }
-		  std::cout << cost_map_->GetHeight() << std::endl;
+		  //std::cout << cost_map_->GetHeight() << std::endl;
 		}
       }
 
@@ -1717,7 +1701,7 @@ void PatchMatchCuda::RunWithWindowSizeAndStep() {
 
     iter_timer.Print("Iteration " + std::to_string(iter + 1));
   }
-  std::cout << "\tafter Sweep" << std::endl;
+  //std::cout << "\tafter Sweep" << std::endl;
 
   total_timer.Print("Total");
 
