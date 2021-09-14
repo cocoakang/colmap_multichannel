@@ -47,7 +47,7 @@
 // since the templated window sizes rely on this value.
 #define THREADS_PER_BLOCK 5
 
-#define TMP_DEPTH 4//added by x
+#define TMP_DEPTH 5//added by x
 #define MAX_DEPTH 70//added by x
 #define ROW_STRIPE 50//added by x
 // We must not include "util/math.h" to avoid any Eigen includes here,

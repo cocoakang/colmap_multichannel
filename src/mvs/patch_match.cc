@@ -527,7 +527,7 @@ void PatchMatchController::ProcessProblem(const PatchMatchOptions& options,
   if (options.write_consistency_graph) {
     patch_match.GetConsistencyGraph().Write(consistency_graph_path);
   }
-  exit(0);
+  //exit(0);
 }
 
 }  // namespace mvs
