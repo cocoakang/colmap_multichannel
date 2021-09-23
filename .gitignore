@@ -43,3 +43,5 @@ doc/_build
 *.app
 
 3d_packages/ceres-solver-1.14.0/
+
+3d_packages/CGAL-4.7/

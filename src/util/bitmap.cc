@@ -64,7 +64,8 @@ Bitmap::Bitmap(const Bitmap& other) : Bitmap() {
   {
 	  
 	  bin_data_ = new float[size_t(height_) * width_ * depth_];
-	  memcpy_s(bin_data_, size_t(height_) * width_ * depth_ * sizeof(float), other.bin_data_, size_t(height_) * width_ * depth_ * sizeof(float));
+	  //memcpy_s(bin_data_, size_t(height_) * width_ * depth_ * sizeof(float), other.bin_data_, size_t(height_) * width_ * depth_ * sizeof(float));
+    memcpy(bin_data_, other.bin_data_, size_t(height_) * width_ * depth_ * sizeof(float));
   }
 }
 
@@ -90,7 +91,8 @@ Bitmap& Bitmap::operator=(const Bitmap& other) {
   {
 	  
 	  bin_data_ = new float[size_t(height_) * width_ * depth_];
-	  memcpy_s(bin_data_, size_t(height_) * width_ * depth_ * sizeof(float), other.bin_data_, size_t(height_) * width_ * depth_ * sizeof(float));
+	  //memcpy_s(bin_data_, size_t(height_) * width_ * depth_ * sizeof(float), other.bin_data_, size_t(height_) * width_ * depth_ * sizeof(float));
+    memcpy(bin_data_, other.bin_data_, size_t(height_) * width_ * depth_ * sizeof(float));
   }
   return *this;
 }
@@ -848,7 +850,9 @@ void Bitmap::CloneMetadata(Bitmap* target, const ImageType image_type) const {
 	CHECK_NOTNULL(target->Data());
 	CHECK_NOTNULL(target->BinData());
 	FreeImage_CloneMetadata(data_.get(), target->Data());
-	memcpy_s(target->BinData(), size_t(target->Width()) * target->Height() * target->Depth() * sizeof(float),
+	//memcpy_s(target->BinData(), size_t(target->Width()) * target->Height() * target->Depth() * sizeof(float),
+	//	bin_data_, size_t(width_) * height_ * depth_ * sizeof(float));
+  memcpy(target->BinData(),
 		bin_data_, size_t(width_) * height_ * depth_ * sizeof(float));
 }
 
