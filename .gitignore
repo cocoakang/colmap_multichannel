@@ -41,3 +41,5 @@ doc/_build
 *.exe
 *.out
 *.app
+
+3d_packages/ceres-solver-1.14.0/

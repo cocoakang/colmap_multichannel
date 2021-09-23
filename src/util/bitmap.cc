@@ -603,7 +603,8 @@ bool Bitmap::Read(const std::string& path, const ImageType image_type) {
 	}
 
 	FILE *fp;
-	fopen_s(&fp, path.c_str(), "rb");
+	//fopen_s(&fp, path.c_str(), "rb");
+	fp = fopen(path.c_str(), "rb");
 	if (fp == NULL)
 		return false;
 
@@ -699,8 +700,9 @@ bool Bitmap::Write(const std::string& path, const ImageType image_type, const FR
 	if (image_type == MULTI)
 	{
 		FILE *fp;
-		fopen_s(&fp, (path + ".bin").c_str(), "wb");
-		if (fp == nullptr)
+		//fopen_s(&fp, (path + ".bin").c_str(), "wb");
+		fp = fopen((path + ".bin").c_str(), "wb");
+    if (fp == nullptr)
 			return false;
 		fwrite(&width_, sizeof(int), 1, fp);
 		fwrite(&height_, sizeof(int), 1, fp);
