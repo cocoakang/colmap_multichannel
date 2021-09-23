@@ -75,4 +75,18 @@ TODO: finish the compilation tutorial
 
 ----
 ## Usage
-TODO: give an example here
+Since we only modified the channel of images for patch match, only the *Undistort Image* & *Patch Match Stereo* parts are different. The other parts are same with original COLMAP.
+### Channel of input images
+The channel of input images is specified in line 50 of src/mvs/patch_match_cuda.cu.
+If you want to use a different channel number, recompilation is required.
+### Undistort
+    ```
+    colmap image_undistorter --image_path $IMAGE_PATH --input_path $INPUT_PATH 
+    ```
+    The $IMAGE_PATH contains the multi-channel images. The name of multi-channel images should be same as the images used in SFM and an extra .bin is appended. For example, if the image names used in SFM are 0.png, 1.png,... 10.png. Then there should be 0.png.bin, 1.png.bin,... 10.png.bin in the $IMAGE_PATH. The format of each bin file is:
+    3 int: image_width, image_height, image_channel
+    [iamge_width*image_height*image_channel] floats (row major)
+
+    The $INPUT_PATH contains the dense folder exported after SFM, by use the order in COLMAP GUI: file -> export as txt. The folder should contrains 3 txt file: cameras.txt, images.txt and points.txt
+### Patch Match Stereo
+    The order 
