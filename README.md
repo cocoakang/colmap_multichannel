@@ -1,8 +1,8 @@
+##About
+
 This is a modified version of COLMAP 3.5 to take in multi-channel input data.
 
 It is for the paper [Learning Efficient Photometric Feature Transform for Multi-view Stereo](https://arxiv.org/abs/2103.14794)
-
-The repo is a night release version, still under refinement for final release.
 
 ----
 ## Requirements
@@ -71,9 +71,6 @@ TIPS:
     ```
     Note: If you have Anaconda installed, the compiler may complain the missing library of libtiff.so. That is because Anaconda changes the system PATH and hides the required libtiff.so.5. You need to find this library file and manually link that file to /usr/lib/x86_64-linux-gnu/libtiff.so.5
 
-### Windows
-TODO: finish the compilation tutorial
-
 ----
 ## Usage
 Since we only modified the channel of images for patch match, only the *Undistort Image* & *Patch Match Stereo* parts are different. The other parts are same with original COLMAP.
@@ -90,4 +87,7 @@ $IMAGE_PATH contains the multi-channel images. The name of multi-channel images 
 
 $INPUT_PATH contains the dense folder exported after SFM, by using the order in COLMAP GUI: file -> export as txt. The folder should contains 3 txt files: cameras.txt, images.txt and points.txt
 ### Patch Match Stereo
-    The order 
+    ```
+    colmap image_undistorter --workspace_Path $INPUT_PATH --PatchMatchStereo.multi_channel 1
+    ```
+$INPUT_PATH is same as above.
