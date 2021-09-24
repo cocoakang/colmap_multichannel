@@ -1,4 +1,4 @@
-##About
+## About
 
 This is a modified version of COLMAP 3.5 to take in multi-channel input data.
 
