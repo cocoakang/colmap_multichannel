@@ -9,8 +9,8 @@ The repo is a night release version, still under refinement for final release.
 The combination below is demonstrated. Other versions may cause compiling problems.  
 | libs | version |
 | -----| ------- |
-| cuda | 10.0.130 |
-| cudnn | 7.6.3.30 for cuda10|
+| cuda | 10.0.130 / 11.0.2 |
+| cudnn | 7.6.3.30 / 8.0.5.39|
 | gcc/g++  | 5 |
 | cgal | 4.7 |  
 | boost | 1.58 |  
@@ -19,6 +19,7 @@ The combination below is demonstrated. Other versions may cause compiling proble
 TIPS:  
 - For Ubuntu 20+, no entry of gcc/g++ lower than 7 are provided. One should add xenial repository as described [here](https://askubuntu.com/questions/1235819/ubuntu-20-04-gcc-version-lower-than-gcc-7).
 - Source codes of demonstrated version of ceres and CGAL are provided in the folder named 3rd_packages. If you use these codes, the recommended order of installing is: gcc/g++ -> cuda/cudnn -> boost -> ceres -> cgal
+- If your gpu is 3090, add this flag to cmake to specify GPU architecture: -DCUDA_ARCHS=Ampere
 
 ----
 ## Installation
