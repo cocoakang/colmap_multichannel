@@ -17,7 +17,7 @@ The combination below is demonstrated. Other versions may cause compiling proble
 | ceres |1.14.0 | 
 
 TIPS:  
-- For Ubuntu 20+, no entry of gcc/g++ lower than 7 are provided. One should add xenial repository as described [here](https://askubuntu.com/questions/1235819/ubuntu-20-04-gcc-version-lower-than-gcc-7).
+- For Ubuntu 20+, no entry of gcc/g++ lower than 7 is provided. One should add xenial repository as described [here](https://askubuntu.com/questions/1235819/ubuntu-20-04-gcc-version-lower-than-gcc-7).
 - Source codes of demonstrated version of ceres and CGAL are provided in the folder named 3rd_packages. If you use these codes, the recommended order of installing is: gcc/g++ -> cuda/cudnn -> boost -> ceres -> cgal
 - If your gpu is 3090, add this flag to cmake to specify GPU architecture: -DCUDA_ARCHS=Ampere
 
