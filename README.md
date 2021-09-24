@@ -87,6 +87,6 @@ $IMAGE_PATH contains the multi-channel images. The name of multi-channel images 
 *3 integers*: image_width, image_height, image_channel  
 *(iamge_width \* image_height \* image_channel) floats* (row major)  
 
-$INPUT_PATH contains the dense folder exported after SFM, by use the order in COLMAP GUI: file -> export as txt. The folder should contains 3 txt files: cameras.txt, images.txt and points.txt
+$INPUT_PATH contains the dense folder exported after SFM, by using the order in COLMAP GUI: file -> export as txt. The folder should contains 3 txt files: cameras.txt, images.txt and points.txt
 ### Patch Match Stereo
     The order 
